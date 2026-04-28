@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#004493",
+                    "on-secondary-container": "#00732a",
+                    "secondary-fixed-dim": "#53e16f",
+                    "surface-bright": "#f8fafb",
+                    "on-secondary-fixed": "#002107",
+                    "on-primary-fixed": "#001a41",
+                    "surface-variant": "#e1e3e4",
+                    "on-primary-container": "#fefcff",
+                    "on-tertiary-container": "#fffbff",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#2d1600",
+                    "inverse-surface": "#2e3132",
+                    "on-surface": "#191c1d",
+                    "outline-variant": "#c1c6d7",
+                    "surface-container": "#eceeef",
+                    "primary-fixed-dim": "#adc6ff",
+                    "secondary-fixed": "#72fe88",
+                    "on-secondary-fixed-variant": "#00531c",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#005bc1",
+                    "secondary": "#006e28",
+                    "tertiary-container": "#ac6300",
+                    "surface-dim": "#d8dadb",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eff1f2",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#e6e8e9",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f5",
+                    "primary": "#0058bc",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffdcbf",
+                    "background": "#f8fafb",
+                    "on-background": "#191c1d",
+                    "inverse-primary": "#adc6ff",
+                    "tertiary": "#894d00",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface": "#f8fafb",
+                    "on-tertiary-fixed-variant": "#6a3b00",
+                    "secondary-container": "#6ffb85",
+                    "primary-fixed": "#d8e2ff",
+                    "outline": "#717786",
+                    "on-surface-variant": "#414755",
+                    "tertiary-fixed-dim": "#ffb874",
+                    "primary-container": "#0070eb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-morphism {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+      }
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body min-h-screen">
+<header class="bg-[#F8FAFB]/70 backdrop-blur-xl fixed top-0 left-0 w-full z-50">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="close-up portrait of a friendly professional man with short dark hair in a clean minimalist environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwcH9bsPZ8AULO0jPf7J8bnXG8tgQhB5L0wLWSZdDCqnnmYi3WtSlubtqZI_0k2ookxUvmRrq-2Zw6P1oQumPm4njEgjADUtgO6XTJv2J4PHE03UD89sSE5EIqot_NVSlI3-b6pYmFHAqa8iVv-J88vqtpwcRB4OK2tVDzgG71QL-aTFayN7M-lPjy-DbDUSHTYqoDcnFO80VgSjs97MHcwYwr3x64JTZOeEBw2nRnAD3rcVU9onUHO_sLUkjO1hz4MlQQDWwO"/>
+</div>
+<h1 class="text-xl font-bold text-[#191C1D] font-headline">Olá, Marck</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#0058BC]" data-icon="wifi">wifi</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+<div class="mb-8">
+<h2 class="text-[3.5rem] font-extrabold font-headline leading-tight tracking-[-0.02em] text-on-surface">Novo Registro</h2>
+<p class="text-on-surface-variant font-label text-sm uppercase tracking-[0.05em] mt-2">Configuração de Medicamento</p>
+</div>
+<section class="space-y-6">
+<div class="surface-container-low rounded-[2rem] p-8 relative overflow-hidden">
+<div class="relative z-10 space-y-8">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Nome do Medicamento</label>
+<div class="relative group">
+<input class="w-full bg-surface-container-lowest border-none rounded-xl px-5 py-4 text-lg focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline" placeholder="Ex: Amoxicilina 500mg" type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-primary-container/10 text-primary hover:bg-primary-container/20 transition-all">
+<span class="material-symbols-outlined" data-icon="barcode_scanner">barcode_scanner</span>
+</button>
+</div>
+</div>
+<div class="space-y-4">
+<label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Forma Farmacêutica</label>
+<div class="grid grid-cols-3 gap-3">
+<button class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface-container-lowest border-2 border-transparent hover:border-primary/20 transition-all group">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center group-hover:bg-primary-fixed text-primary">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+</div>
+<span class="text-sm font-semibold">Comprimido</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white shadow-lg transition-all">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="capsule" style="font-variation-settings: 'FILL' 1;">pill</span>
+</div>
+<span class="text-sm font-semibold">Cápsula</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface-container-lowest border-2 border-transparent hover:border-primary/20 transition-all group">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center group-hover:bg-primary-fixed text-primary">
+<span class="material-symbols-outlined" data-icon="opacity">opacity</span>
+</div>
+<span class="text-sm font-semibold">Gotas</span>
+</button>
+</div>
+</div>
+<div class="grid md:grid-cols-2 gap-8 items-end">
+<div class="space-y-4">
+<label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Primeira Dose</label>
+<div class="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-center h-32 overflow-hidden relative">
+<div class="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-surface-container-lowest to-transparent z-10"></div>
+<div class="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface-container-lowest to-transparent z-10"></div>
+<div class="flex items-center gap-4 text-2xl font-bold text-on-surface">
+<div class="flex flex-col items-center">
+<span class="text-outline/40 scale-75">07</span>
+<span class="text-primary text-3xl">08</span>
+<span class="text-outline/40 scale-75">09</span>
+</div>
+<span class="text-primary">:</span>
+<div class="flex flex-col items-center">
+<span class="text-outline/40 scale-75">15</span>
+<span class="text-primary text-3xl">30</span>
+<span class="text-outline/40 scale-75">45</span>
+</div>
+</div>
+<div class="absolute inset-x-4 top-1/2 -translate-y-1/2 h-10 border-y border-primary/10 pointer-events-none"></div>
+</div>
+</div>
+<div class="space-y-4">
+<label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Intervalo</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full bg-surface-container-lowest text-on-surface-variant font-semibold text-sm hover:bg-primary-fixed transition-colors">4h</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-lowest text-on-surface-variant font-semibold text-sm hover:bg-primary-fixed transition-colors">6h</button>
+<button class="px-4 py-2 rounded-full bg-primary text-white font-semibold text-sm shadow-md">8h</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-lowest text-on-surface-variant font-semibold text-sm hover:bg-primary-fixed transition-colors">12h</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-lowest text-on-surface-variant font-semibold text-sm hover:bg-primary-fixed transition-colors">24h</button>
+</div>
+</div>
+</div>
+<div class="pt-6 border-t border-outline-variant/15">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="auto_awesome">auto_awesome</span>
+                                Próximas doses estimadas
+                            </h3>
+<span class="text-[10px] uppercase font-bold text-primary tracking-widest px-2 py-0.5 rounded bg-primary/10">Timeline Ativa</span>
+</div>
+<div class="flex gap-4">
+<div class="flex-1 bg-surface-container-high/50 rounded-2xl p-4 flex flex-col items-center gap-1">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Hoje</span>
+<span class="text-lg font-bold text-primary">16:30</span>
+</div>
+<div class="flex-1 bg-surface-container-high/50 rounded-2xl p-4 flex flex-col items-center gap-1">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Amanhã</span>
+<span class="text-lg font-bold text-on-surface">00:30</span>
+</div>
+<div class="flex-1 bg-surface-container-high/50 rounded-2xl p-4 flex flex-col items-center gap-1">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Amanhã</span>
+<span class="text-lg font-bold text-on-surface">08:30</span>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute -right-24 -bottom-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute -left-24 -top-24 w-64 h-64 bg-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+</div>
+<button class="w-full bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white py-5 rounded-2xl text-lg font-bold shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all">
+                Finalizar Registro
+                <span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</button>
+<button class="w-full py-4 text-outline font-semibold hover:text-on-surface transition-colors">
+                Cancelar
+            </button>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/70 dark:bg-[#191C1D]/70 backdrop-blur-xl shadow-[0_-12px_40px_0_rgba(25,28,29,0.04)] rounded-t-[1.5rem] flex justify-around items-center px-4 pb-6 pt-3">
+<a class="flex flex-col items-center justify-center text-[#414755] dark:text-[#E6E8E9] px-5 py-2 transition-colors hover:bg-[#E6E8E9] rounded-2xl" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="text-[11px] font-semibold mt-1">Início</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white rounded-2xl px-5 py-2 shadow-lg scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="pill" style="font-variation-settings: 'FILL' 1;">pill</span>
+<span class="text-[11px] font-semibold mt-1">Medicamentos</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#414755] dark:text-[#E6E8E9] px-5 py-2 transition-colors hover:bg-[#E6E8E9] rounded-2xl" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-[11px] font-semibold mt-1">Histórico</span>
+</a>
+</nav>
+</body></html>
