@@ -24,3 +24,7 @@ Atualmente esta configurado para Expo SDK 54.
 ## Observacao
 
 Os arquivos HTML originais dentro de `stitch_nexdose_iot_health_ecosystem/` foram mantidos como referencia visual.
+
+
+Instalar o apk para testes.
+<img width="938" height="650" alt="image" src="https://github.com/user-attachments/assets/f3895c3f-fca7-41fe-9d8e-90f9d2a8bf8e" />
