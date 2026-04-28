@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>NexDose - Gestão Inteligente de Medicamentos</title>
+    
+    <!-- External Scripts & Styles -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#007AFF",
+                        "on-primary": "#ffffff",
+                        "secondary": "#006e28",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#894d00",
+                        "error": "#ba1a1a",
+                        "background": "#f8fafb",
+                        "on-background": "#191c1d",
+                        "surface": "#f8fafb",
+                        "on-surface": "#191c1d",
+                        "surface-variant": "#e1e3e4",
+                        "on-surface-variant": "#414755",
+                        "outline": "#717786",
+                        "outline-variant": "#c1c6d7",
+                        "primary-container": "#0070eb",
+                        "on-primary-container": "#fefcff",
+                        "secondary-container": "#6ffb85",
+                        "on-secondary-container": "#00732a",
+                        "tertiary-container": "#ac6300",
+                        "on-tertiary-container": "#fffbff",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f2f4f5",
+                        "surface-container": "#eceeef",
+                        "surface-container-high": "#e6e8e9",
+                        "surface-container-highest": "#e1e3e4",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-fixed": "#001a41",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary-fixed-variant": "#004493",
+                        "secondary-fixed": "#72fe88",
+                        "on-secondary-fixed": "#002107",
+                        "secondary-fixed-dim": "#53e16f",
+                        "on-secondary-fixed-variant": "#00531c",
+                        "tertiary-fixed": "#ffdcbf",
+                        "on-tertiary-fixed": "#2d1600",
+                        "tertiary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#6a3b00",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #0058BC 0%, #0070EB 100%);
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    <!-- React Library CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Shared Components ---
+
+        const BottomNav = () => {
+            const location = useLocation();
+            const getActiveStyles = (path) => location.pathname === path 
+                ? "bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white shadow-lg" 
+                : "text-[#414755] dark:text-[#E6E8E9] hover:bg-black/5";
+
+            return (
+                <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/70 dark:bg-[#191C1D]/70 backdrop-blur-xl rounded-t-[1.5rem] shadow-[0_-12px_40px_0_rgba(25,28,29,0.04)]">
+                    <Link to="/" className={`flex flex-col items-center justify-center rounded-2xl px-5 py-2 transition-all ${getActiveStyles('/')}`}>
+                        <span className="material-symbols-outlined" style={{fontVariationSettings: location.pathname === '/' ? "'FILL' 1" : ""}}>home</span>
+                        <span className="text-[11px] font-semibold mt-1">Início</span>
+                    </Link>
+                    <Link to="/register" className={`flex flex-col items-center justify-center rounded-2xl px-5 py-2 transition-all ${getActiveStyles('/register')}`}>
+                        <span className="material-symbols-outlined" style={{fontVariationSettings: location.pathname === '/register' ? "'FILL' 1" : ""}}>pill</span>
+                        <span className="text-[11px] font-semibold mt-1">Medicamentos</span>
+                    </Link>
+                    <Link to="/history" className={`flex flex-col items-center justify-center rounded-2xl px-5 py-2 transition-all ${getActiveStyles('/history')}`}>
+                        <span className="material-symbols-outlined" style={{fontVariationSettings: location.pathname === '/history' ? "'FILL' 1" : ""}}>history</span>
+                        <span className="text-[11px] font-semibold mt-1">Histórico</span>
+                    </Link>
+                    <Link to="/settings" className={`flex flex-col items-center justify-center rounded-2xl px-5 py-2 transition-all ${getActiveStyles('/settings')}`}>
+                        <span className="material-symbols-outlined" style={{fontVariationSettings: location.pathname === '/settings' ? "'FILL' 1" : ""}}>settings</span>
+                        <span className="text-[11px] font-semibold mt-1">Ajustes</span>
+                    </Link>
+                </nav>
+            );
+        };
+
+        const TopAppBar = ({ title, showBack = false, userImg = "https://lh3.googleusercontent.com/aida-public/AB6AXuDJxOvxl3Lay2f8Wcv1jzknMqOPi2g-9s26nNtKb1VOJwS-Z4T3p0GxW2h2SZMA2KFMeWSxVPpirPWLPt0Z5n9Ks7OVIwB7viQzzeEJmKHGFlmgtxZqQ16KJRJeSTcenALiGVY7GKLPW-82J8M7Cn0kOLdcOXjwzjlxmsIomqU6mHXhZxI0Td949ESMt4veD__ldu8S92pFDvWLJXSC3bxfRfOeUk94NsyQDGcppmLg43stBgGUS2Ic08IWdkV-uPo4xg_ioYOu" }) => {
+            const navigate = useNavigate();
+            return (
+                <header className="bg-[#F8FAFB]/70 backdrop-blur-xl fixed top-0 left-0 w-full z-50 border-b border-surface-container-high/50">
+                    <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+                        <div className="flex items-center gap-3">
+                            {showBack ? (
+                                <button onClick={() => navigate(-1)} className="text-[#007AFF] hover:opacity-80 transition-opacity active:scale-95">
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                </button>
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden border border-white shadow-sm">
+                                    <img className="w-full h-full object-cover" src={userImg} alt="User" />
+                                </div>
+                            )}
+                            <div className="flex flex-col">
+                                <h1 className="text-xl font-bold text-[#191C1D] tracking-tight">{title || 'NexDose'}</h1>
+                                {!showBack && (
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-semibold uppercase tracking-widest text-on-secondary-container bg-secondary-container/30 px-2 py-0.5 rounded-full">Dispenser Online</span>
+                                        <span className="material-symbols-outlined text-[14px] text-secondary animate-pulse">wifi</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="p-2 rounded-full hover:bg-[#E6E8E9]/50 transition-all text-on-surface-variant">
+                                <span className="material-symbols-outlined">search</span>
+                            </button>
+                            <Link to="/settings" className="p-2 rounded-full hover:bg-[#E6E8E9]/50 transition-all text-on-surface-variant">
+                                <span className="material-symbols-outlined">settings</span>
+                            </Link>
+                        </div>
+                    </div>
+                </header>
+            );
+        };
+
+        // --- Screen 1: Dashboard (ID: 694dc42c30bd49a89e6496659c088140) ---
+
+        const DashboardPage = () => {
+            return (
+                <div className="pb-32 min-h-screen">
+                    <TopAppBar title="Olá, Marck" />
+                    <main className="max-w-7xl mx-auto px-6 pt-24 space-y-12">
+                        {/* Countdown Hero */}
+                        <section className="relative">
+                            <div className="absolute -top-12 -right-8 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none"></div>
+                            <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-8 md:p-12 shadow-[0_12px_40px_0_rgba(25,28,29,0.04)] border border-white/20 relative overflow-hidden text-center">
+                                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Próxima dose em</span>
+                                <div className="relative flex items-center justify-center my-6">
+                                    <svg className="w-64 h-64 md:w-80 md:h-80 -rotate-90">
+                                        <circle className="text-surface-variant" cx="50%" cy="50%" fill="transparent" r="48%" stroke="currentColor" strokeWidth="8"></circle>
+                                        <circle className="text-primary" cx="50%" cy="50%" fill="transparent" r="48%" stroke="currentColor" strokeDasharray="1000" strokeDashoffset="350" strokeLinecap="round" strokeWidth="12"></circle>
+                                    </svg>
+                                    <div className="absolute flex flex-col items-center">
+                                        <span className="text-5xl md:text-7xl font-extrabold tracking-tighter text-on-surface font-headline">02:45h</span>
+                                        <div className="mt-2 flex items-center gap-2 text-primary">
+                                            <span className="material-symbols-outlined text-lg">medication</span>
+                                            <span className="text-sm font-semibold">Amoxicilina 500mg</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button className="bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white px-10 py-4 rounded-2xl font-bold text-lg shadow-lg hover:scale-[0.98] transition-all duration-300">
+                                    Confirmar Agora
+                                </button>
+                            </div>
+                        </section>
+
+                        {/* Bento Grid */}
+                        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-surface-container-low p-6 rounded-[2rem] flex flex-col justify-between">
+                                <div className="flex justify-between items-start">
+                                    <div className="bg-white p-3 rounded-2xl shadow-sm">
+                                        <span className="material-symbols-outlined text-primary" style={{fontVariationSettings: "'FILL' 1"}}>battery_5_bar</span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-on-secondary-container bg-secondary-container px-2 py-1 rounded-full">ESTÁVEL</span>
+                                </div>
+                                <div className="mt-8">
+                                    <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Status do Dispositivo</p>
+                                    <h3 className="text-2xl font-bold text-on-surface">Bateria 82%</h3>
+                                    <p className="text-sm text-on-surface-variant mt-2">Próxima recarga estimada em 4 dias.</p>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2 bg-surface-container-high p-6 rounded-[2rem] relative overflow-hidden">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-lg font-bold">Aderência Semanal</h3>
+                                    <span className="material-symbols-outlined text-on-surface-variant">trending_up</span>
+                                </div>
+                                <div className="flex items-end justify-between gap-2 h-32 px-2">
+                                    {[60, 80, 40, 95, 100, 10, 10].map((h, i) => (
+                                        <div key={i} className={`w-full rounded-t-lg transition-all duration-500 ${i === 4 ? 'bg-primary shadow-[0_0_20px_rgba(0,88,188,0.3)]' : i > 4 ? 'bg-surface-variant' : 'bg-primary/20'}`} style={{height: `${h}%`}}></div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant px-2 uppercase tracking-tighter">
+                                    <span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Quick Access */}
+                        <section className="space-y-6">
+                            <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-[0.2em] px-2">Acesso Rápido</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <Link to="/register" className="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-on-tertiary-fixed-variant">pill</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-on-surface">Minha Farmácia</span>
+                                </Link>
+                                <Link to="/history" className="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-on-primary-fixed-variant">history</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-on-surface">Histórico</span>
+                                </Link>
+                                <Link to="/settings" className="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-on-secondary-fixed-variant">group</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-on-surface">Cuidadores</span>
+                                </Link>
+                                <div className="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                                    <div className="w-12 h-12 rounded-full bg-error-container flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-on-error-container">emergency_home</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-on-surface">Emergência</span>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+
+                    {/* FABs */}
+                    <div className="fixed bottom-28 right-6 flex flex-col gap-4 z-50">
+                        <button className="w-14 h-14 bg-white/80 backdrop-blur-lg rounded-full flex items-center justify-center shadow-xl text-primary border border-white/50 hover:scale-110 transition-all">
+                            <span className="material-symbols-outlined">notifications</span>
+                        </button>
+                        <Link to="/register" className="w-16 h-16 bg-gradient-to-br from-[#0058BC] to-[#0070EB] rounded-full flex items-center justify-center shadow-[0_8px_25px_rgba(0,88,188,0.4)] text-white hover:scale-110 active:scale-95 transition-all">
+                            <span className="material-symbols-outlined text-3xl">add</span>
+                        </Link>
+                    </div>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        // --- Screen 2: Register (ID: dd6aa0541bea4074b5c54cca3c65f055) ---
+
+        const RegisterPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="pb-32 min-h-screen">
+                    <TopAppBar title="Novo Registro" showBack={true} />
+                    <main className="pt-24 px-6 max-w-2xl mx-auto space-y-8">
+                        <div>
+                            <h2 className="text-[3.5rem] font-extrabold font-headline leading-tight tracking-[-0.02em] text-on-surface">Novo Registro</h2>
+                            <p className="text-on-surface-variant font-label text-sm uppercase tracking-[0.05em] mt-2">Configuração de Medicamento</p>
+                        </div>
+
+                        <section className="space-y-6">
+                            <div className="surface-container-low rounded-[2rem] p-8 relative overflow-hidden">
+                                <div className="relative z-10 space-y-8">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Nome do Medicamento</label>
+                                        <div className="relative group">
+                                            <input className="w-full bg-surface-container-lowest border-none rounded-xl px-5 py-4 text-lg focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Ex: Amoxicilina 500mg" type="text"/>
+                                            <button className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-primary-container/10 text-primary hover:bg-primary-container/20 transition-all">
+                                                <span className="material-symbols-outlined">barcode_scanner</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Forma Farmacêutica</label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {['Comprimido', 'Cápsula', 'Gotas'].map((f, i) => (
+                                                <button key={f} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all ${i === 1 ? 'bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white shadow-lg' : 'bg-surface-container-lowest border-2 border-transparent text-on-surface'}`}>
+                                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${i === 1 ? 'bg-white/20 text-white' : 'bg-surface-container-high text-primary'}`}>
+                                                        <span className="material-symbols-outlined" style={{fontVariationSettings: i === 1 ? "'FILL' 1" : ""}}>{f === 'Comprimido' ? 'pill' : f === 'Cápsula' ? 'pill' : 'opacity'}</span>
+                                                    </div>
+                                                    <span className="text-sm font-semibold">{f}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-8 items-end">
+                                        <div className="space-y-4">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Primeira Dose</label>
+                                            <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-center h-32 overflow-hidden relative">
+                                                <div className="flex items-center gap-4 text-2xl font-bold text-on-surface">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-outline/40 scale-75">07</span>
+                                                        <span className="text-primary text-3xl">08</span>
+                                                        <span className="text-outline/40 scale-75">09</span>
+                                                    </div>
+                                                    <span className="text-primary">:</span>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-outline/40 scale-75">15</span>
+                                                        <span className="text-primary text-3xl">30</span>
+                                                        <span className="text-outline/40 scale-75">45</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant ml-1">Intervalo</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['4h', '6h', '8h', '12h', '24h'].map(t => (
+                                                    <button key={t} className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors ${t === '8h' ? 'bg-primary text-white shadow-md' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-primary-fixed'}`}>{t}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={() => navigate('/')} className="w-full bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white py-5 rounded-2xl text-lg font-bold shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all">
+                                Finalizar Registro
+                                <span className="material-symbols-outlined">check_circle</span>
+                            </button>
+                            <button onClick={() => navigate(-1)} className="w-full py-4 text-outline font-semibold hover:text-on-surface transition-colors">
+                                Cancelar
+                            </button>
+                        </section>
+                    </main>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        // --- Screen 3: History (ID: 61f3d849ecbc41b783085307dd5a7723) ---
+
+        const HistoryPage = () => {
+            return (
+                <div className="pb-32 min-h-screen">
+                    <TopAppBar title="Olá, Marck" />
+                    <main className="pt-24 px-6 max-w-2xl mx-auto space-y-8">
+                        <section className="space-y-4">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <span className="text-[11px] font-bold tracking-wider text-[#414755] uppercase">Status do Dia</span>
+                                    <h2 className="text-3xl font-extrabold tracking-tight text-[#191C1D]">Controle de Dosagem</h2>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-2xl font-bold text-primary">85%</span>
+                                    <p className="text-[10px] text-outline font-semibold">ADESÃO</p>
+                                </div>
+                            </div>
+                            <div className="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-primary to-primary-container w-[85%]"></div>
+                            </div>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-sm font-bold text-[#414755] tracking-[0.05em] uppercase">Histórico de Hoje</h3>
+                            <div className="space-y-3">
+                                <HistoryItem name="Metformina 500mg" time="Tomado às 08:00" status="taken" />
+                                <HistoryItem name="Vitamina D3" time="Dose perdida às 12:30" status="missed" />
+                                <HistoryItem name="Losartana 25mg" time="Tomado às 14:00" status="taken" />
+                            </div>
+                        </section>
+
+                        <section className="space-y-4 pt-4">
+                            <h3 className="text-sm font-bold text-[#414755] tracking-[0.05em] uppercase">Monitoramento Ativo</h3>
+                            <div className="bg-surface-container-low rounded-[2.5rem] p-8 space-y-6">
+                                <div className="flex items-center gap-5">
+                                    <div className="relative">
+                                        <div className="w-20 h-20 rounded-[2rem] overflow-hidden border-2 border-white">
+                                            <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV_0erHhTftaAc7KQp2BUyintMexOrpLTSQQy7GfzHZNjLg0oA8NqM2ZMHCkiBEDnfc42nVKLGLkEzGqY-W04KkvILZbysiS0eKxcWbhUpYLZiaYQ_EVPMtqplbEE7IzkW9lCRSb6IU1g93T3AJPa2ScGStwLh-QQBw99JPYO6E1AAa6wU1zPjVY1xE9AN8UzoeEjYt8s13cpalQjrlEmUX82I2pd5lgqZEsk4nEj2f21h6NxSvj6_IRCCaWh3x4luSQDp833x" alt="Caregiver"/>
+                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-secondary rounded-full border-4 border-surface-container-low flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-primary tracking-widest uppercase mb-1">Responsável Cadastrado</p>
+                                        <h4 className="text-2xl font-bold text-on-surface">Dra. Helena Silva</h4>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="material-symbols-outlined text-secondary text-sm" style={{fontVariationSettings: "'FILL' 1"}}>verified_user</span>
+                                            <span className="text-xs font-semibold text-on-surface-variant">Notificações Ativas</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button className="w-full py-5 bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+                                    <span className="material-symbols-outlined" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
+                                    Ligar para Responsável
+                                </button>
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const HistoryItem = ({ name, time, status }) => (
+            <div className={`ambient-shadow rounded-3xl p-5 flex items-center justify-between transition-all hover:scale-[0.99] ${status === 'missed' ? 'bg-surface-container-lowest border-2 border-tertiary/10' : 'glass-card'}`}>
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${status === 'missed' ? 'bg-tertiary-container/20' : 'bg-secondary-container/30'}`}>
+                        <span className={`material-symbols-outlined text-2xl ${status === 'missed' ? 'text-tertiary' : 'text-on-secondary-container'}`} style={{fontVariationSettings: status === 'missed' ? "'FILL' 1" : ""}}>pill</span>
+                    </div>
+                    <div>
+                        <p className="font-bold text-on-surface">{name}</p>
+                        <p className={`text-xs ${status === 'missed' ? 'text-tertiary font-semibold' : 'text-on-surface-variant'}`}>{time}</p>
+                    </div>
+                </div>
+                {status === 'taken' ? (
+                    <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+                        <span className="material-symbols-outlined text-on-secondary-container font-bold">check</span>
+                    </div>
+                ) : (
+                    <div className="px-4 py-2 rounded-full bg-tertiary text-white text-[10px] font-bold tracking-wider uppercase">Pendente</div>
+                )}
+            </div>
+        );
+
+        // --- Screen 4: Settings (ID: f83baf111a4b486ea249527a3f44a6e1) ---
+
+        const SettingsPage = () => {
+            return (
+                <div className="pb-32 min-h-screen">
+                    <TopAppBar title="Configurações" showBack={true} />
+                    <main className="mt-24 px-6 max-w-2xl mx-auto space-y-8">
+                        <section className="glass-card rounded-[2rem] p-8 shadow-sm border border-white/20">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <span className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant/70 mb-2 block">Central de Alertas</span>
+                                    <h2 className="text-3xl font-extrabold tracking-tight text-on-surface mb-2">NexDose Setup</h2>
+                                    <p className="text-on-surface-variant text-sm max-w-xs">Gerencie quem recebe as atualizações e eventos prioritários.</p>
+                                </div>
+                                <div className="bg-primary/10 p-4 rounded-2xl">
+                                    <span className="material-symbols-outlined text-primary text-3xl">notifications_active</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant px-2">Responsável Principal</h3>
+                            <div className="glass-card rounded-[2rem] p-8 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-on-surface-variant ml-1">Nome Completo</label>
+                                    <input className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3.5" defaultValue="Maria Oliveira" type="text"/>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-on-surface-variant ml-1">Telefone</label>
+                                        <input className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3.5" defaultValue="+55 (11) 99999-9999" type="tel"/>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-on-surface-variant ml-1">E-mail</label>
+                                        <input className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3.5" defaultValue="maria@email.com" type="email"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant px-2">Preferências de Disparo</h3>
+                            <div className="glass-card rounded-[2rem] p-2">
+                                <ToggleItem icon="pill" color="bg-secondary-container/20" iconColor="text-secondary" title="Alerta de Liberação" sub="Aviso imediato quando a dose for liberada." defaultChecked={true} />
+                                <ToggleItem icon="check_circle" color="bg-primary-fixed/30" iconColor="text-primary" title="Confirmação de Ingestão" sub="Notificar quando o paciente retirar a dose." defaultChecked={true} />
+                                <ToggleItem icon="timer_off" color="bg-error-container/20" iconColor="text-error" title="Alerta de Esquecimento" sub="Aviso crítico após 15min de atraso." defaultChecked={true} />
+                                <ToggleItem icon="settings_input_component" color="bg-tertiary-fixed/30" iconColor="text-tertiary" title="Status do Dispenser" sub="Bateria baixa ou perda de conexão Wi-Fi." defaultChecked={false} />
+                            </div>
+                        </section>
+
+                        <div className="pt-4">
+                            <button className="w-full primary-gradient text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all">
+                                Salvar Configurações
+                            </button>
+                            <p className="text-center text-[11px] text-on-surface-variant mt-4 font-medium uppercase tracking-widest">Protocolo de Segurança Ativo</p>
+                        </div>
+                    </main>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const ToggleItem = ({ icon, color, iconColor, title, sub, defaultChecked }) => (
+            <div className="flex items-center justify-between p-6 hover:bg-surface-container-low/50 rounded-[1.5rem] transition-colors">
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center`}>
+                        <span className={`material-symbols-outlined ${iconColor}`}>{icon}</span>
+                    </div>
+                    <div>
+                        <p className="font-semibold text-on-surface">{title}</p>
+                        <p className="text-xs text-on-surface-variant">{sub}</p>
+                    </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input defaultChecked={defaultChecked} className="sr-only peer" type="checkbox"/>
+                    <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#007AFF]"></div>
+                </label>
+            </div>
+        );
+
+        // --- App Component with Router ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <div className="min-h-screen bg-background">
+                        <Routes>
+                            <Route path="/" element={<DashboardPage />} />
+                            <Route path="/register" element={<RegisterPage />} />
+                            <Route path="/history" element={<HistoryPage />} />
+                            <Route path="/settings" element={<SettingsPage />} />
+                        </Routes>
+                    </div>
+                </MemoryRouter>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
