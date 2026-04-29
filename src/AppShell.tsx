@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Pressable, StyleSheet, Text, View, Modal, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { HomeScreen } from "./screens/HomeScreen";
@@ -10,13 +10,43 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 import { TabKey } from "./data/mockData";
 import { colors, radius, shadow } from "./theme/tokens";
 
-export function AppShell() {
+export function AppShell({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
+  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (activeTab === "home") {
+        setLogoutModalVisible(true);
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [activeTab]);
+
+  const handleBackPress = () => {
+    if (activeTab !== "home") {
+      setActiveTab("home");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
-        <TopBar activeTab={activeTab} />
+        <TopBar 
+          activeTab={activeTab} 
+          onSettingsPress={() => setActiveTab("settings")}
+          onBackPress={handleBackPress}
+          onNotificationPress={() => setNotificationModalVisible(true)}
+        />
         <View style={styles.body}>
           {activeTab === "home" && <HomeScreen onNavigate={setActiveTab} />}
           {activeTab === "medications" && (
@@ -27,16 +57,40 @@ export function AppShell() {
         </View>
         <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
       </View>
+
+      <NotificationModal 
+        visible={notificationModalVisible}
+        onClose={() => setNotificationModalVisible(false)}
+      />
+
+      <LogoutModal 
+        visible={logoutModalVisible}
+        onLogout={onLogout}
+        onContinue={() => setLogoutModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
 
-function TopBar({ activeTab }: { activeTab: TabKey }) {
+function TopBar({ 
+  activeTab, 
+  onSettingsPress, 
+  onBackPress,
+  onNotificationPress
+}: { 
+  activeTab: TabKey; 
+  onSettingsPress: () => void;
+  onBackPress: () => void;
+  onNotificationPress: () => void;
+}) {
   const isSettings = activeTab === "settings";
 
   return (
     <View style={styles.topBar}>
-      <Pressable style={styles.profileBlock}>
+      <Pressable 
+        style={styles.profileBlock} 
+        onPress={isSettings ? onBackPress : undefined}
+      >
         <View style={styles.avatar}>
           <Feather
             name={isSettings ? "arrow-left" : "user"}
@@ -57,8 +111,12 @@ function TopBar({ activeTab }: { activeTab: TabKey }) {
         </View>
       </Pressable>
       <View style={styles.topActions}>
-        <Feather name="bell" size={24} color={colors.textMuted} />
-        <Feather name="settings" size={24} color={colors.textMuted} />
+        <Pressable onPress={onNotificationPress}>
+          <Feather name="bell" size={24} color={colors.textMuted} />
+        </Pressable>
+        <Pressable onPress={onSettingsPress}>
+          <Feather name="settings" size={24} color={colors.textMuted} />
+        </Pressable>
       </View>
     </View>
   );
@@ -75,7 +133,6 @@ function BottomTabs({
     { key: "home", label: "Inicio", icon: "home" },
     { key: "medications", label: "Medicamentos", icon: "plus-square" },
     { key: "history", label: "Historico", icon: "archive" },
-    { key: "settings", label: "Ajustes", icon: "settings" },
   ];
 
   return (
@@ -107,6 +164,79 @@ function BottomTabs({
         );
       })}
     </View>
+  );
+}
+
+function NotificationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable 
+        style={styles.modalOverlay} 
+        onPress={onClose}
+      >
+        <View style={styles.notificationModal}>
+          <View style={styles.notificationHeader}>
+            <Text style={styles.notificationTitle}>Notificações</Text>
+            <Pressable onPress={onClose}>
+              <Feather name="x" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+          <View style={styles.notificationContent}>
+            <Text style={styles.notificationEmpty}>Nenhuma notificação no momento</Text>
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function LogoutModal({ 
+  visible, 
+  onLogout, 
+  onContinue 
+}: { 
+  visible: boolean; 
+  onLogout: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onContinue}
+    >
+      <Pressable 
+        style={styles.modalOverlay} 
+        onPress={onContinue}
+      >
+        <View style={styles.logoutModal}>
+          <Text style={styles.logoutTitle}>Sair do app?</Text>
+          <Text style={styles.logoutMessage}>Tem certeza que deseja sair?</Text>
+          
+          <View style={styles.logoutButtonContainer}>
+            <Pressable 
+              style={[styles.logoutButton, styles.continueButton]}
+              onPress={onContinue}
+            >
+              <Text style={styles.continueButtonText}>Continuar</Text>
+            </Pressable>
+            
+            <Pressable 
+              style={[styles.logoutButton, styles.exitButton]}
+              onPress={onLogout}
+            >
+              <Text style={styles.exitButtonText}>Sair</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -221,5 +351,84 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: "white",
     fontWeight: "800",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-start",
+    paddingTop: 60,
+    paddingHorizontal: 16,
+  },
+  notificationModal: {
+    backgroundColor: "white",
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    maxWidth: 320,
+    width: "100%",
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  notificationTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  notificationContent: {
+    padding: 16,
+  },
+  notificationEmpty: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  logoutModal: {
+    backgroundColor: "white",
+    borderRadius: radius.lg,
+    padding: 24,
+    width: "85%",
+    alignSelf: "center",
+  },
+  logoutTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  logoutMessage: {
+    fontSize: 14,
+    color: colors.textMuted,
+    marginBottom: 24,
+  },
+  logoutButtonContainer: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  logoutButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
+    alignItems: "center",
+  },
+  continueButton: {
+    backgroundColor: colors.primarySoft,
+  },
+  continueButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  exitButton: {
+    backgroundColor: "#EF4444",
+  },
+  exitButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

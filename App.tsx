@@ -15,7 +15,7 @@ export default function App() {
       case "login":
         return <LoginScreen onLogin={() => setScreen("app")} />;
       case "app":
-        return <AppShell />;
+        return <AppShell onLogout={() => setScreen("login")} />;
       default:
         return null;
     }
