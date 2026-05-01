@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, View, ScrollView, SafeAreaView } from "react-native";
 import { notificationSettings } from "../data/mockData";
 import {
@@ -13,6 +13,19 @@ import { colors } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
 
 export function SettingsScreen() {
+  const [toggleStates, setToggleStates] = useState<Record<string, boolean>>(
+    notificationSettings.reduce((acc, item) => {
+      acc[item.key] = item.enabled;
+      return acc;
+    }, {} as Record<string, boolean>)
+  );
+
+  const handleToggleChange = (key: string, value: boolean) => {
+    setToggleStates((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
   return (
     <AppScreen>
       {/* ScrollView é essencial para evitar que componentes sumam em telas menores */}
@@ -42,7 +55,7 @@ export function SettingsScreen() {
           </View>
 
           <View style={styles.block}>
-            <SectionTitle>Preferências de disparo</SectionTitle>
+            <SectionTitle>Preferências de notificações</SectionTitle>
             <GlassCard>
               <View style={styles.form}>
                 {notificationSettings.map((item) => (
@@ -51,7 +64,8 @@ export function SettingsScreen() {
                     icon={item.icon as any}
                     title={item.title}
                     subtitle={item.subtitle}
-                    value={item.enabled}
+                    value={toggleStates[item.key]}
+                    onValueChange={(value) => handleToggleChange(item.key, value)}
                   />
                 ))}
               </View>

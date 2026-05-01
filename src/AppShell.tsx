@@ -20,8 +20,10 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
       if (activeTab === "home") {
         setLogoutModalVisible(true);
         return true;
+      } else {
+        setActiveTab("home");
+        return true;
       }
-      return false;
     };
 
     const backHandler = BackHandler.addEventListener(

@@ -125,11 +125,13 @@ export function ToggleRow({
   title,
   subtitle,
   value,
+  onValueChange,
 }: {
   icon: React.ComponentProps<typeof Feather>["name"];
   title: string;
   subtitle: string;
   value: boolean;
+  onValueChange?: (value: boolean) => void;
 }) {
   return (
     <View style={styles.toggleRow}>
@@ -140,7 +142,11 @@ export function ToggleRow({
         <Text style={styles.toggleTitle}>{title}</Text>
         <Text style={styles.toggleSubtitle}>{subtitle}</Text>
       </View>
-      <Switch value={value} trackColor={{ true: colors.primaryBright }} />
+      <Switch 
+        value={value} 
+        trackColor={{ true: colors.primaryBright }}
+        onValueChange={onValueChange}
+      />
     </View>
   );
 }
@@ -161,15 +167,20 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   cardDefault: {
-    backgroundColor: colors.surfaceLowest,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   cardMuted: {
-    backgroundColor: colors.surfaceLow,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   glass: {
-    backgroundColor: "rgba(255,255,255,0.78)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "#E5E7EB",
+    padding: 16,
   },
   sectionTitle: {
     color: colors.textMuted,
@@ -219,17 +230,25 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: colors.surfaceLowest,
+    backgroundColor: "#FFFFFF",
     borderRadius: radius.md,
     paddingHorizontal: 16,
     paddingVertical: 16,
     color: colors.text,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   toggleIcon: {
     width: 40,

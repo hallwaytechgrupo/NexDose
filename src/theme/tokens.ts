@@ -1,6 +1,6 @@
 export const colors = {
-  background: "#F8FAFB",
-  surface: "#F8FAFB",
+  background: "#f5f5f5",
+  surface: "#56b9ea",
   surfaceLowest: "#FFFFFF",
   surfaceLow: "#F2F4F5",
   surfaceHigh: "#E6E8E9",
@@ -31,7 +31,7 @@ export const radius = {
 
 export const shadow = {
   card: {
-    shadowColor: "#191C1D",
+    shadowColor: "#bab5b5",
     shadowOpacity: 0.06,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },

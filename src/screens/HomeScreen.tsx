@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: 16,
+
   },
   statusHeader: {
     flexDirection: "row",

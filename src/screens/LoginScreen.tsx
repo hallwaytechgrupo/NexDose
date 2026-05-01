@@ -6,6 +6,7 @@ import {
   InputField,
 } from "../components/Primitives";
 import { colors } from "../theme/tokens";
+import { CreateAccountScreen } from "./CreateAccount";
 
 export function LoginScreen({
   onLogin,
@@ -21,10 +22,7 @@ export function LoginScreen({
           source={require("../../img/nexdose1.png")}
           style={styles.logo}
         />
-        <Text style={styles.title}>Bem-vindo de volta</Text>
-        <Text style={styles.subtitle}>
-          Faça login para continuar gerenciando seus medicamentos.
-        </Text>
+       
 
         <View style={styles.form}>
           <InputField label="E-mail" placeholder="seuemail@exemplo.com" />
@@ -56,10 +54,11 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   logo: {
-    width: 250,
-    height: 150,
+    width: 350,
+    height: 250,
     alignSelf: "center",
-    marginBottom: 24,
+    marginTop: 40,
+    marginBottom: 14,
     resizeMode: "contain",
   },
   title: {
