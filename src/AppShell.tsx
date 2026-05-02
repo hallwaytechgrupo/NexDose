@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { HomeScreen } from "./screens/HomeScreen";
 import { Feather } from "@expo/vector-icons";
-import { RegisterMedicationScreen } from "./screens/RegisterMedicationScreen";
+import MedicationsScreen from "./screens/RegisterMedicationScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { CaregiverScreen } from "./screens/Caregiver";
@@ -57,7 +57,7 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
         <View style={styles.body}>
           {activeTab === "home" && <HomeScreen onNavigate={setActiveTab} />}
           {activeTab === "medications" && (
-            <RegisterMedicationScreen onNavigate={setActiveTab} />
+            <MedicationsScreen onNavigate={setActiveTab} />
           )}
           {activeTab === "history" && <HistoryScreen />}
           {activeTab === "settings" && <SettingsScreen />}

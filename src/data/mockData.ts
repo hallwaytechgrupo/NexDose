@@ -22,12 +22,12 @@ export const quickActions = [
 ];
 
 export const medicationTypes = [
-  { key: "tablet", label: "Comprimido", icon: "square" },
-  { key: "capsule", label: "Capsula", icon: "circle" },
-  { key: "drops", label: "Gotas", icon: "droplet" },
+  { key: "tablet", label: "Comprimido", icon: "circle" },
+  { key: "capsule", label: "Capsula", icon: "pill" },
+  { key: "drops", label: "Gotas", icon: "water" },
 ];
 
-export const intervals = ["4h", "6h", "8h", "12h", "24h"];
+export const intervals = ["6h", "8h", "12h", "24h"];
 
 export const schedulePreview = [
   { label: "Hoje", value: "16:30" },

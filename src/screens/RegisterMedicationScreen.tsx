@@ -1,11 +1,7 @@
-import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import {
-  intervals,
-  medicationTypes,
-  schedulePreview,
-  TabKey,
-} from "../data/mockData";
+import React, { useState } from 'react';
+import { View, Text, Modal, FlatList, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   AppScreen,
   Chip,
@@ -14,19 +10,28 @@ import {
   SectionTitle,
   SurfaceCard,
 } from "../components/Primitives";
+import {
+  intervals,
+  medicationTypes,
+  schedulePreview,
+  TabKey,
+} from "../data/mockData";
 import { colors, radius } from "../theme/tokens";
-import { Feather } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
-export function RegisterMedicationScreen({
-  onNavigate,
-}: {
-  onNavigate: (tab: TabKey) => void;
-}) {
-  const [selectedType, setSelectedType] = useState("capsule");
-  const [selectedInterval, setSelectedInterval] = useState("8h");
+
+export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: TabKey) => void; }) {
+  // 1. Estados para a Lista e para o Modal
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [medicationsList, setMedicationsList] = useState([
+    // Exemplo de item inicial para você ver a lista funcionando
+    { id: '1', name: 'Dipirona 500mg', interval: '8h', nextDose: '14:00' }
+  ]);
+
+  // 2. Estados do seu formulário (mantidos do seu código original)
+  const [selectedType, setSelectedType] = useState('capsule');
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
+  const [selectedInterval, setSelectedInterval] = useState('8h');
 
   const onChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || date;
@@ -38,142 +43,211 @@ export function RegisterMedicationScreen({
     setShowPicker(true);
   };
 
+  // 3. Função para salvar e fechar o modal
+  const handleSaveMedication = () => {
+    // Aqui você vai adicionar a lógica para salvar no banco/estado global
+    // setMedicationsList([...medicationsList, novoRemedio]);
+    
+    setIsModalVisible(false); // Fecha o modal após salvar
+  };
+
   return (
-    <AppScreen>
-      <View style={styles.headerCopy}>
-        <Text style={styles.pageTitle}>Novo registro</Text>
-        <Text style={styles.pageSubtitle}>Configuracao de medicamento</Text>
-      </View>
+    <AppScreen useScrollView={false}>
+      {/* ========================================== */}
+      {/* TELA PRINCIPAL: LISTA DE MEDICAMENTOS      */}
+      {/* ========================================== */}
+      <Text style={[styles.pageTitle, { color: colors.primary }]}>Meus Medicamentos</Text>
 
-      <SurfaceCard muted>
-        <View style={styles.contentBlock}>
-          <InputField
-            label="Nome do medicamento"
-            placeholder="Ex: Amoxicilina 500mg"
-          />
+      <FlatList
+        data={medicationsList}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <SurfaceCard muted style={styles.medicationCard}>
+            <Text style={styles.medName}>{item.name}</Text>
+            <Text>Intervalo: {item.interval}</Text>
+            <Text>Próxima dose: {item.nextDose}</Text>
+          </SurfaceCard>
+        )}
+        ListEmptyComponent={<Text style={{ color: colors.text }}>Nenhum medicamento registrado ainda.</Text>}
+      />
 
-          <View style={styles.contentBlock}>
-            <SectionTitle>Forma farmaceutica</SectionTitle>
-            <View style={styles.typeGrid}>
-              {medicationTypes.map((item) => {
-                const active = item.key === selectedType;
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => setSelectedType(item.key)}
-                    style={[
-                      styles.typeCard,
-                      active ? styles.typeCardActive : undefined,
-                    ]}
-                  >
-                    <Feather
-                      name={item.icon as any}
-                      size={24}
-                      color={active ? colors.white : colors.text}
-                    />
-                    <Text
-                      style={[
-                        styles.typeText,
-                        active ? styles.typeTextActive : undefined,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+      {/* BOTÃO PARA ABRIR O MODAL */}
+      <GradientButton
+        title="Novo Medicamento"
+        onPress={() => setIsModalVisible(true)}
+      />
 
-          <View style={styles.twoCols}>
-            <View style={styles.column}>
-              <SectionTitle>Definir o horario da primeira dose</SectionTitle>
-              <Pressable onPress={showTimepicker}>
-                <View style={styles.timePicker}>
-                  <Text style={styles.timePickerMain}>
-                    {date.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </View>
-              </Pressable>
-              {showPicker && (
-                <DateTimePicker
-                  testID="dateTimePicker"
-                  value={date}
-                  mode={"time"}
-                  is24Hour={true}
-                  display="default"
-                  onChange={onChange}
+      {/* ========================================== */}
+      {/* MODAL DE REGISTRO (O SEU CÓDIGO ORIGINAL)  */}
+      {/* ========================================== */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide" // Faz o modal subir a partir da base da tela
+        presentationStyle="pageSheet" // No iOS, cria aquele efeito de "carta" que não cobre 100% da tela (opcional)
+        onRequestClose={() => setIsModalVisible(false)} // Permite fechar no botão de voltar do Android
+      >
+        {/* Usamos uma View com flex: 1 para ocupar o Modal inteiro */}
+        <View style={styles.modalContainer}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={[styles.modalTitle, { color: colors.primary }]}>Registrar Novo Medicamento</Text>
+
+            <SurfaceCard muted>
+              <View style={styles.contentBlock}>
+                <InputField
+                  label="Nome do medicamento"
+                  placeholder="Ex: Amoxicilina 500mg"
                 />
-              )}
-            </View>
 
-            <View style={styles.column}>
-              <SectionTitle>Intervalo</SectionTitle>
-              <View style={styles.chipsWrap}>
-                {intervals.map((interval) => (
-                  <Chip
-                    key={interval}
-                    label={interval}
-                    active={interval === selectedInterval}
-                    onPress={() => setSelectedInterval(interval)}
-                  />
-                ))}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.timelineBlock}>
-            <View style={styles.timelineHeader}>
-              <Text style={styles.timelineTitle}>Proximas doses estimadas</Text>
-              
-            </View>
-            <View style={styles.scheduleRow}>
-              {schedulePreview.map((item) => (
-                <View
-                  key={`${item.label}-${item.value}`}
-                  style={styles.scheduleCard}
-                >
-                  <Text style={styles.scheduleLabel}>{item.label}</Text>
-                  <Text style={styles.scheduleValue}>{item.value}</Text>
+                <View style={styles.contentBlock}>
+                  <SectionTitle>Forma farmacêutica</SectionTitle>
+                  <View style={styles.typeGrid}>
+                    {medicationTypes.map((item) => {
+                      const active = item.key === selectedType;
+                      return (
+                        <Pressable
+                          key={item.key}
+                          onPress={() => setSelectedType(item.key)}
+                          style={[
+                            styles.typeCard,
+                            active ? styles.typeCardActive : undefined,
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={item.icon as any}
+                            size={24}
+                            color={active ? colors.white : colors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.typeText,
+                              active ? styles.typeTextActive : undefined,
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      </SurfaceCard>
 
-      <GradientButton
-        title="Finalizar registro"
-        onPress={() => onNavigate("home")}
-      />
-      <GradientButton
-        title="Cancelar"
-        onPress={() => onNavigate("home")}
-        variant="danger"
-      />
+                <View style={styles.twoCols}>
+                  <View style={styles.column}>
+                    <SectionTitle>Definir o horário da primeira dose</SectionTitle>
+                    <Pressable onPress={showTimepicker}>
+                      <View style={styles.timePicker}>
+                        <Text style={styles.timePickerMain}>
+                          {date.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    {showPicker && (
+                      <DateTimePicker
+                        testID="dateTimePicker"
+                        value={date}
+                        mode={"time"}
+                        is24Hour={true}
+                        display="default"
+                        onChange={onChange}
+                      />
+                    )}
+                  </View>
+
+                  <View style={styles.column}>
+                    <SectionTitle>Intervalo</SectionTitle>
+                    <View style={styles.chipsWrap}>
+                      {intervals.map((interval) => (
+                        <Chip
+                          key={interval}
+                          label={interval}
+                          active={interval === selectedInterval}
+                          onPress={() => setSelectedInterval(interval)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.timelineBlock}>
+                  <View style={styles.timelineHeader}>
+                    <Text style={styles.timelineTitle}>Próximas doses estimadas</Text>
+                  </View>
+                  <View style={styles.scheduleRow}>
+                    {schedulePreview.map((item) => (
+                      <View
+                        key={`${item.label}-${item.value}`}
+                        style={styles.scheduleCard}
+                      >
+                        <Text style={styles.scheduleLabel}>{item.label}</Text>
+                        <Text style={styles.scheduleValue}>{item.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </SurfaceCard>
+
+            {/* Botões reconfigurados para fechar o Modal */}
+            <View style={styles.modalButtons}>
+              <GradientButton
+                title="Finalizar registro"
+                onPress={handleSaveMedication}
+              />
+              <GradientButton
+                title="Cancelar"
+                onPress={() => setIsModalVisible(false)} // Fecha o modal sem salvar
+                variant="danger"
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </AppScreen>
   );
 }
 
+// Estilos básicos para fazer a estrutura funcionar
 const styles = StyleSheet.create({
-  headerCopy: {
-    gap: 8,
+  mainContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
   },
   pageTitle: {
-    color: colors.text,
-    fontSize: 42,
-    fontWeight: "900",
-    textTransform: "capitalize",
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  pageSubtitle: {
-    color: colors.textMuted,
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 1.4,
-    fontWeight: "700",
+  modalContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5', // Cor de fundo do modal
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    marginTop: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  medicationCard: {
+    padding: 15,
+    marginBottom: 10,
+  },
+  medName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalButtons: {
+    marginTop: 20,
+    gap: 10, // Espaçamento entre os botões
+  },
+  headerCopy: {
+    gap: 8,
   },
   contentBlock: {
     gap: 22,
@@ -190,6 +264,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: "center",
     gap: 10,
+    borderColor: colors.primary,
+    borderWidth: 1,
   },
   typeCardActive: {
     backgroundColor: colors.primary,
@@ -199,8 +275,8 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   typeText: {
-    color: colors.text,
-    fontSize: 13,
+    color: colors.primary,
+    fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
   },

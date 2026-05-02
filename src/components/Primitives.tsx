@@ -12,28 +12,36 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, shadow } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
 
-export function AppScreen({ children }: PropsWithChildren) {
-  return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {children}
-    </ScrollView>
-  );
+export function AppScreen({
+  children,
+  useScrollView = true,
+}: PropsWithChildren<{ useScrollView?: boolean }>) {
+  if (useScrollView) {
+    return (
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    );
+  }
+  return <View style={[styles.screen, styles.content]}>{children}</View>;
 }
 
 export function SurfaceCard({
   children,
   muted = false,
-}: PropsWithChildren<{ muted?: boolean }>) {
+  style,
+}: PropsWithChildren<{ muted?: boolean; style?: any }>) {
   return (
     <View
       style={[
         styles.card,
         muted ? styles.cardMuted : styles.cardDefault,
         shadow.card,
+        style,
       ]}
     >
       {children}
