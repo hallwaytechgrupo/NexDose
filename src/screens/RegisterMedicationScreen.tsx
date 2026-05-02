@@ -16,6 +16,7 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export function RegisterMedicationScreen({
   onNavigate,
@@ -24,6 +25,18 @@ export function RegisterMedicationScreen({
 }) {
   const [selectedType, setSelectedType] = useState("capsule");
   const [selectedInterval, setSelectedInterval] = useState("8h");
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+
+  const onChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || date;
+    setShowPicker(false);
+    setDate(currentDate);
+  };
+
+  const showTimepicker = () => {
+    setShowPicker(true);
+  };
 
   return (
     <AppScreen>
@@ -74,11 +87,27 @@ export function RegisterMedicationScreen({
 
           <View style={styles.twoCols}>
             <View style={styles.column}>
-              <SectionTitle>Primeira dose</SectionTitle>
-              <View style={styles.timePicker}>
-                <Text style={styles.timePickerMain}>08:30</Text>
-                <Text style={styles.timePickerGhost}>07 09 15 45</Text>
-              </View>
+              <SectionTitle>Definir o horario da primeira dose</SectionTitle>
+              <Pressable onPress={showTimepicker}>
+                <View style={styles.timePicker}>
+                  <Text style={styles.timePickerMain}>
+                    {date.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </View>
+              </Pressable>
+              {showPicker && (
+                <DateTimePicker
+                  testID="dateTimePicker"
+                  value={date}
+                  mode={"time"}
+                  is24Hour={true}
+                  display="default"
+                  onChange={onChange}
+                />
+              )}
             </View>
 
             <View style={styles.column}>
@@ -99,7 +128,7 @@ export function RegisterMedicationScreen({
           <View style={styles.timelineBlock}>
             <View style={styles.timelineHeader}>
               <Text style={styles.timelineTitle}>Proximas doses estimadas</Text>
-              <Text style={styles.timelineBadge}>Timeline ativa</Text>
+              
             </View>
             <View style={styles.scheduleRow}>
               {schedulePreview.map((item) => (
@@ -120,9 +149,11 @@ export function RegisterMedicationScreen({
         title="Finalizar registro"
         onPress={() => onNavigate("home")}
       />
-      <Pressable onPress={() => onNavigate("home")}>
-        <Text style={styles.cancel}>Cancelar</Text>
-      </Pressable>
+      <GradientButton
+        title="Cancelar"
+        onPress={() => onNavigate("home")}
+        variant="danger"
+      />
     </AppScreen>
   );
 }

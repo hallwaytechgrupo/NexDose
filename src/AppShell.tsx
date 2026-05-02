@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Pressable, StyleSheet, Text, View, Modal, BackHandler } from "react-native";
+import { Pressable, StyleSheet, Text, View, Modal, BackHandler,  } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { HomeScreen } from "./screens/HomeScreen";
@@ -214,6 +214,7 @@ function NotificationModal({ visible, onClose }: { visible: boolean; onClose: ()
 function UserInfoModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [name, setName] = useState("Maria Oliveira");
   const [email, setEmail] = useState("maria@email.com");
+  const [tel, setTel] = useState("(11) 99999-9999");
 
   const handleSave = () => {
     // TODO: Implement save logic
@@ -245,16 +246,17 @@ function UserInfoModal({ visible, onClose }: { visible: boolean; onClose: () => 
             </Pressable>
             <InputField label="Nome completo" value={name} onChangeText={setName} />
             <InputField label="E-mail" value={email} onChangeText={setEmail} />
+            <InputField label= "telefone" value={tel} onChangeText={setTel} keyboardType="phone-pad" />
             <InputField label="Nova Senha" secureTextEntry placeholder="Deixe em branco para não alterar" />
             <InputField label="Confirmar nova senha" secureTextEntry placeholder="Confirme a nova senha" />
           </View>
           <View style={styles.userInfoActions}>
-            <Pressable style={[styles.modalActionButton, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </Pressable>
-            <Pressable style={[styles.modalActionButton, styles.saveButton]} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Salvar</Text>
-            </Pressable>
+            <View style={{ flex: 1 }}>
+              <GradientButton title="Cancelar" variant="danger" onPress={onClose} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <GradientButton title="Salvar" onPress={handleSave} />
+            </View>
           </View>
         </View>
       </Pressable>
@@ -469,7 +471,6 @@ const styles = StyleSheet.create({
   },
   userInfoActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     padding: 16,
     gap: 12,
     borderTopWidth: 1,

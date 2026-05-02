@@ -14,6 +14,7 @@ interface Caregiver {
   id: string;
   name: string;
   email: string;
+  Tel: string; // Optional phone number
 }
 
 // --- Main Screen Component ---
@@ -21,8 +22,8 @@ export function CaregiverScreen() {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [isAdding, setIsAdding] = useState(false);
 
-  const addCaregiver = (name: string, email: string) => {
-    const newCaregiver = { id: Date.now().toString(), name, email };
+  const addCaregiver = (name: string, email: string, tel: string) => {
+    const newCaregiver = { id: Date.now().toString(), name, email, Tel: tel };
     setCaregivers([...caregivers, newCaregiver]);
     setIsAdding(false);
   };
@@ -104,6 +105,7 @@ function CaregiverList({
               <View>
                 <Text style={styles.caregiverName}>{caregiver.name}</Text>
                 <Text style={styles.caregiverEmail}>{caregiver.email}</Text>
+                <Text style={styles.caregiverTel}>{caregiver.Tel}</Text>
               </View>
               <Pressable onPress={() => onRemove(caregiver.id)} style={styles.removeButton}>
                 <Feather name="x" size={20} color={colors.textMuted} />
@@ -123,15 +125,16 @@ function AddCaregiverForm({
   onAdd,
   onCancel,
 }: {
-  onAdd: (name: string, email: string) => void;
+  onAdd: (name: string, email: string, tel: string) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [tel, setTel] = useState("");
 
   const handleAdd = () => {
     if (name && email) {
-      onAdd(name, email);
+      onAdd(name, email, tel);
     }
   };
 
@@ -148,13 +151,12 @@ function AddCaregiverForm({
         <View style={styles.form}>
           <InputField label="Nome completo" value={name} onChangeText={setName} />
           <InputField label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
+          <InputField label="Telefone" value={tel} onChangeText={setTel} keyboardType="phone-pad" />
         </View>
       </SurfaceCard>
 
       <View style={styles.formActions}>
-        <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-        </Pressable>
+        <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
         <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
       </View>
     </AppScreen>
@@ -209,6 +211,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   caregiverEmail: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  caregiverTel: {
     fontSize: 14,
     color: colors.textMuted,
   },

@@ -16,12 +16,11 @@ export function HistoryScreen() {
       <View style={styles.overview}>
         <View>
           <SectionTitle>Status do dia</SectionTitle>
-          <Text style={styles.headline}>Controle de dosagem</Text>
-        </View>
-        <View style={styles.percentageBlock}>
           <Text style={styles.percentage}>85%</Text>
           <Text style={styles.percentageLabel}>Adesao</Text>
+          <Text style={styles.headline}>Controle de dosagem</Text>
         </View>
+       
       </View>
 
       <View style={styles.progressTrack}>
