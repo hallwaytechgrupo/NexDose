@@ -15,7 +15,7 @@ interface Pharmacy {
 }
 
 // Crie este pequeno componente fora da sua tela principal
-const FastMarker = ({ pharmacy, pinColor }) => {
+const FastMarker = ({ pharmacy, pinColor }: { pharmacy: Pharmacy, pinColor: string }) => {
   const [trackChanges, setTrackChanges] = useState(true);
 
   return (
@@ -29,7 +29,7 @@ const FastMarker = ({ pharmacy, pinColor }) => {
       pinColor={pinColor}
       tracksViewChanges={trackChanges}
       // Assim que o mapa desenhar ele uma vez, ele "congela" e não trava mais o app
-      onLoad={() => setTrackChanges(false)} 
+      onLayout={() => setTrackChanges(false)} 
     />
   );
 };
@@ -99,7 +99,7 @@ export function PharmacyScreen() {
 
 
   return (
-    console.log("TOTAL DE FARMÁCIAS NO STATE:", pharmacies.length),
+   
     <View style={styles.container}>
       <MapView
         provider={PROVIDER_GOOGLE}
