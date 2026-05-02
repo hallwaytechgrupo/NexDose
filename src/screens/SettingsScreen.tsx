@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, ScrollView, SafeAreaView } from "react-native";
+import { StyleSheet, Text, View, ScrollView } from "react-native";
+
 import { notificationSettings } from "../data/mockData";
 import {
   AppScreen,
@@ -89,7 +90,8 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: 40, // Espaço extra no final para o botão não ficar colado
+    paddingBottom: 40, 
+  // Espaço extra no final para o botão não ficar colado
   },
   container: {
     paddingHorizontal: 20, // Garante que nada encoste nas bordas da tela

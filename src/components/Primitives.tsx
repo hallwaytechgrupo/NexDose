@@ -54,14 +54,21 @@ export function SectionTitle({ children }: PropsWithChildren) {
 export function GradientButton({
   title,
   onPress,
+  variant,
 }: {
   title: string;
   onPress?: () => void;
+  variant?: "default" | "danger";
 }) {
+  const gradientColors: [string, string] =
+    variant === "danger"
+      ? ["#EF4444", "#DC2626"]
+      : [colors.primary, colors.primaryBright];
+
   return (
     <Pressable onPress={onPress}>
       <LinearGradient
-        colors={[colors.primary, colors.primaryBright]}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientButton}
@@ -100,21 +107,27 @@ export function InputField({
   value,
   placeholder,
   secureTextEntry,
+  onChangeText, // Adicionado
+  keyboardType,   // Adicionado
 }: {
   label: string;
   value?: string;
   placeholder?: string;
   secureTextEntry?: boolean;
+  onChangeText?: (text: string) => void; // Adicionado
+  keyboardType?: React.ComponentProps<typeof TextInput>['keyboardType']; // Adicionado
 }) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
-        defaultValue={value}
+        value={value} 
         placeholder={placeholder}
         placeholderTextColor={colors.outline}
         style={styles.input}
         secureTextEntry={secureTextEntry}
+        onChangeText={onChangeText} 
+        keyboardType={keyboardType}   
       />
     </View>
   );
@@ -144,7 +157,7 @@ export function ToggleRow({
       </View>
       <Switch 
         value={value} 
-        trackColor={{ true: colors.primaryBright }}
+        trackColor={{ false: "#E5E7EB", true: colors.primaryBright }}
         onValueChange={onValueChange}
       />
     </View>

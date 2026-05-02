@@ -1,22 +1,23 @@
-export type TabKey = "home" | "medications" | "history" | "settings";
+export type TabKey = "home" | "medications" | "history" | "settings" | "caregiver" | "pharmacy";
 
 export const adherence = [60, 80, 40, 95, 100, 10, 10];
 
 export const quickActions = [
-  {
-    key: "history",
-    label: "Ver histórico",
-    icon: "archive",
-  },
+  
   {
     key: "caregiver",
-    label: "Adicionar cuidador",
-    icon: "user-plus",
+    label: " Cuidador",
+    icon: "user",
   },
   {
     key: "pharmacy",
     label: "Achar farmácia",
     icon: "map-pin",
+  },
+  {
+    key: "dispenser",
+    label: "Dispositivo(s)",
+    icon: "package",
   },
 ];
 

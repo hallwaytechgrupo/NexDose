@@ -10,6 +10,7 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
+import { CaregiverScreen } from "./Caregiver";
 
 export function HomeScreen({
   onNavigate,
@@ -81,9 +82,9 @@ export function HomeScreen({
             <Pressable
               key={action.key}
               onPress={() => {
-                if (action.key === "history") onNavigate("history");
-                if (action.key === "caregiver") onNavigate("settings");
-                if (action.key === "pharmacy") onNavigate("medications");
+                
+                if (action.key === "caregiver") onNavigate("caregiver");
+                if (action.key === "pharmacy") onNavigate("pharmacy");
                 
               }}
               style={styles.actionCard}

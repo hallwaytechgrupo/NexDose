@@ -40,6 +40,11 @@ export function CreateAccountScreen({
                         placeholder="Sua senha"
                         secureTextEntry
                     />
+                    <InputField
+                        label="Confirmar senha"
+                        placeholder="Confirme sua senha"
+                        secureTextEntry
+                    />
                 </View>
             </SurfaceCard>
 

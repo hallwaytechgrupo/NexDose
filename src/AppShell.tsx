@@ -7,13 +7,17 @@ import { Feather } from "@expo/vector-icons";
 import { RegisterMedicationScreen } from "./screens/RegisterMedicationScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { CaregiverScreen } from "./screens/Caregiver";
+import { PharmacyScreen } from "./screens/PharmacyScreen";
 import { TabKey } from "./data/mockData";
 import { colors, radius, shadow } from "./theme/tokens";
+import { GradientButton, InputField } from "./components/Primitives";
 
 export function AppShell({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [userInfoModalVisible, setUserInfoModalVisible] = useState(false);
 
   useEffect(() => {
     const backAction = () => {
@@ -48,6 +52,7 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
           onSettingsPress={() => setActiveTab("settings")}
           onBackPress={handleBackPress}
           onNotificationPress={() => setNotificationModalVisible(true)}
+          onAvatarPress={() => setUserInfoModalVisible(true)}
         />
         <View style={styles.body}>
           {activeTab === "home" && <HomeScreen onNavigate={setActiveTab} />}
@@ -56,6 +61,8 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
           )}
           {activeTab === "history" && <HistoryScreen />}
           {activeTab === "settings" && <SettingsScreen />}
+          {activeTab === "caregiver" && <CaregiverScreen />}
+          {activeTab === "pharmacy" && <PharmacyScreen />}
         </View>
         <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
       </View>
@@ -63,6 +70,11 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
       <NotificationModal 
         visible={notificationModalVisible}
         onClose={() => setNotificationModalVisible(false)}
+      />
+
+      <UserInfoModal
+        visible={userInfoModalVisible}
+        onClose={() => setUserInfoModalVisible(false)}
       />
 
       <LogoutModal 
@@ -78,12 +90,14 @@ function TopBar({
   activeTab, 
   onSettingsPress, 
   onBackPress,
-  onNotificationPress
+  onNotificationPress,
+  onAvatarPress
 }: { 
   activeTab: TabKey; 
   onSettingsPress: () => void;
   onBackPress: () => void;
   onNotificationPress: () => void;
+  onAvatarPress: () => void;
 }) {
   const isSettings = activeTab === "settings";
 
@@ -91,7 +105,7 @@ function TopBar({
     <View style={styles.topBar}>
       <Pressable 
         style={styles.profileBlock} 
-        onPress={isSettings ? onBackPress : undefined}
+        onPress={isSettings ? onBackPress : onAvatarPress}
       >
         <View style={styles.avatar}>
           <Feather
@@ -102,7 +116,7 @@ function TopBar({
         </View>
         <View style={styles.profileCopy}>
           <Text style={styles.topTitle}>
-            {isSettings ? "Configuracoes" : "Ola, Marck"}
+            {isSettings ? "Configuracoes" : "Ola, Maria!"}
           </Text>
           {!isSettings && (
             <View style={styles.statusRow}>
@@ -197,6 +211,57 @@ function NotificationModal({ visible, onClose }: { visible: boolean; onClose: ()
   );
 }
 
+function UserInfoModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [name, setName] = useState("Maria Oliveira");
+  const [email, setEmail] = useState("maria@email.com");
+
+  const handleSave = () => {
+    // TODO: Implement save logic
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable 
+        style={styles.modalOverlay} 
+        onPress={onClose}
+      >
+        <View style={styles.userInfoModal}>
+          <View style={styles.notificationHeader}>
+            <Text style={styles.notificationTitle}>Editar Perfil</Text>
+            <Pressable onPress={onClose}>
+              <Feather name="x" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+          <View style={styles.userInfoContent}>
+            <Pressable style={styles.changePhotoButton}>
+              <Feather name="camera" size={16} color={colors.primary} />
+              <Text style={styles.changePhotoButtonText}>Mudar foto do perfil</Text>
+            </Pressable>
+            <InputField label="Nome completo" value={name} onChangeText={setName} />
+            <InputField label="E-mail" value={email} onChangeText={setEmail} />
+            <InputField label="Nova Senha" secureTextEntry placeholder="Deixe em branco para não alterar" />
+            <InputField label="Confirmar nova senha" secureTextEntry placeholder="Confirme a nova senha" />
+          </View>
+          <View style={styles.userInfoActions}>
+            <Pressable style={[styles.modalActionButton, styles.cancelButton]} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </Pressable>
+            <Pressable style={[styles.modalActionButton, styles.saveButton]} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function LogoutModal({ 
   visible, 
   onLogout, 
@@ -222,19 +287,8 @@ function LogoutModal({
           <Text style={styles.logoutMessage}>Tem certeza que deseja sair?</Text>
           
           <View style={styles.logoutButtonContainer}>
-            <Pressable 
-              style={[styles.logoutButton, styles.continueButton]}
-              onPress={onContinue}
-            >
-              <Text style={styles.continueButtonText}>Continuar</Text>
-            </Pressable>
-            
-            <Pressable 
-              style={[styles.logoutButton, styles.exitButton]}
-              onPress={onLogout}
-            >
-              <Text style={styles.exitButtonText}>Sair</Text>
-            </Pressable>
+            <GradientButton title="Continuar" onPress={onContinue} />
+            <GradientButton title="Sair" onPress={onLogout} variant="danger" />
           </View>
         </View>
       </Pressable>
@@ -388,6 +442,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     textAlign: "center",
+  },
+  userInfoModal: {
+    backgroundColor: "white",
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    width: "95%",
+    alignSelf: "center",
+  },
+  userInfoContent: {
+    padding: 16,
+    gap: 16,
+  },
+  changePhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 12,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.md,
+  },
+  changePhotoButtonText: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  userInfoActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  modalActionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: radius.md,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#E5E7EB",
+  },
+  cancelButtonText: {
+    color: colors.text,
+    fontWeight: "700",
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  saveButtonText: {
+    color: "white",
+    fontWeight: "700",
   },
   logoutModal: {
     backgroundColor: "white",
