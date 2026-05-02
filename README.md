@@ -27,4 +27,5 @@ Os arquivos HTML originais dentro de `stitch_nexdose_iot_health_ecosystem/` fora
 
 
 QRCode para instalar o apk para testes.
-<img width="938" height="650" alt="image" src="https://github.com/user-attachments/assets/f3895c3f-fca7-41fe-9d8e-90f9d2a8bf8e" />
+<img width="596" height="378" alt="image" src="https://github.com/user-attachments/assets/277a6fce-4696-4d01-ba44-7efe84b00193" />
+
