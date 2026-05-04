@@ -12,18 +12,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, shadow } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
 
-/**
- * @file Primitives.tsx
- * @brief Coleção de componentes reutilizáveis (UI kit) do NexDose.
- * 
- * Este arquivo contém os blocos de construção básicos da interface do usuário (botões, cartões, inputs, etc).
- * O objetivo é manter a consistência visual em todo o aplicativo e evitar a repetição de código.
- */
-
-/**
- * Container principal padrão para as telas do app.
- * Suporta rolagem (ScrollView) por padrão, mas pode ser desativada.
- */
 export function AppScreen({
   children,
   useScrollView = true,
@@ -42,10 +30,6 @@ export function AppScreen({
   return <View style={[styles.screen, styles.content]}>{children}</View>;
 }
 
-/**
- * Cartão de superfície padrão. Usado para agrupar conteúdo.
- * O prop 'muted' pode ser usado para aplicar um estilo visual ligeiramente diferente (atualmente similar ao padrão).
- */
 export function SurfaceCard({
   children,
   muted = false,
@@ -65,28 +49,16 @@ export function SurfaceCard({
   );
 }
 
-/**
- * Cartão com estilo "Glassmorphism" (vidro). 
- * Usado geralmente para elementos de destaque.
- */
 export function GlassCard({ children }: PropsWithChildren) {
   return (
     <View style={[styles.card, styles.glass, shadow.card]}>{children}</View>
   );
 }
 
-/**
- * Título de seção padronizado. 
- * Geralmente usado em letras maiúsculas para dividir áreas de conteúdo.
- */
 export function SectionTitle({ children }: PropsWithChildren) {
   return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
-/**
- * Botão principal do aplicativo com fundo em gradiente.
- * Suporta uma variante 'danger' (vermelho) para ações destrutivas ou de alerta.
- */
 export function GradientButton({
   title,
   onPress,
@@ -98,8 +70,8 @@ export function GradientButton({
 }) {
   const gradientColors: [string, string] =
     variant === "danger"
-      ? ["#EF4444", "#DC2626"] // Cores para a variante de perigo (vermelho)
-      : [colors.primary, colors.primaryBright]; // Cores padrão (tema principal)
+      ? ["#EF4444", "#DC2626"]
+      : [colors.primary, colors.primaryBright];
 
   return (
     <Pressable onPress={onPress}>
@@ -115,10 +87,6 @@ export function GradientButton({
   );
 }
 
-/**
- * Componente "Chip" (pílula). Usado para filtros, categorias ou seleções rápidas.
- * Possui um estado ativo/inativo.
- */
 export function Chip({
   label,
   active = false,
@@ -142,24 +110,20 @@ export function Chip({
   );
 }
 
-/**
- * Campo de entrada de texto (Input) padronizado.
- * Inclui um rótulo (label) acima do campo.
- */
 export function InputField({
   label,
   value,
   placeholder,
   secureTextEntry,
-  onChangeText, 
-  keyboardType,   
+  onChangeText, // Adicionado
+  keyboardType,   // Adicionado
 }: {
   label: string;
   value?: string;
   placeholder?: string;
-  secureTextEntry?: boolean; // Define se é um campo de senha (esconde o texto)
-  onChangeText?: (text: string) => void; 
-  keyboardType?: React.ComponentProps<typeof TextInput>['keyboardType']; // Tipo de teclado (ex: numérico, email)
+  secureTextEntry?: boolean;
+  onChangeText?: (text: string) => void; // Adicionado
+  keyboardType?: React.ComponentProps<typeof TextInput>['keyboardType']; // Adicionado
 }) {
   return (
     <View style={styles.fieldGroup}>
@@ -177,10 +141,6 @@ export function InputField({
   );
 }
 
-/**
- * Linha contendo um ícone, título, subtítulo e um botão de alternância (Switch/Toggle).
- * Usado frequentemente em telas de configurações.
- */
 export function ToggleRow({
   icon,
   title,
@@ -188,11 +148,11 @@ export function ToggleRow({
   value,
   onValueChange,
 }: {
-  icon: React.ComponentProps<typeof Feather>["name"]; // Ícone do pacote Feather
+  icon: React.ComponentProps<typeof Feather>["name"];
   title: string;
   subtitle: string;
-  value: boolean; // Estado atual do toggle (ligado/desligado)
-  onValueChange?: (value: boolean) => void; // Função chamada ao alterar o estado
+  value: boolean;
+  onValueChange?: (value: boolean) => void;
 }) {
   return (
     <View style={styles.toggleRow}>

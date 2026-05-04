@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { AppShell } from "./src/AppShell";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { CreateAccountScreen } from "./src/screens/CreateAccount";
-import { SafeAreaView } from "react-native-safe-area-context";
+
 
 
 /**
