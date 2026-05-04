@@ -13,20 +13,37 @@ import { TabKey } from "./data/mockData";
 import { colors, radius, shadow } from "./theme/tokens";
 import { GradientButton, InputField } from "./components/Primitives";
 
+/**
+ * @file AppShell.tsx
+ * @brief Estrutura principal do aplicativo NexDose.
+ * 
+ * Este componente serve como o container principal para a maioria das telas do aplicativo.
+ * Ele gerencia:
+ * - O estado da aba ativa (navegação inferior).
+ * - O estado de visibilidade de modais (notificações, informações do usuário, logout).
+ * - A interceptação do botão voltar do hardware em dispositivos Android.
+ * - A renderização da tela correta baseada na aba ativa.
+ */
 export function AppShell({ onLogout }: { onLogout: () => void }) {
+  // Estado para controlar a aba atualmente ativa.
   const [activeTab, setActiveTab] = useState<TabKey>("home");
+  
+  // Estados para controlar a visibilidade dos modais.
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [userInfoModalVisible, setUserInfoModalVisible] = useState(false);
 
+  // Efeito para lidar com o botão voltar do hardware no Android.
   useEffect(() => {
     const backAction = () => {
+      // Se estiver na tela principal ('home'), ao apertar voltar, mostra o modal de logout.
       if (activeTab === "home") {
         setLogoutModalVisible(true);
-        return true;
+        return true; // Retorna true para evitar o comportamento padrão de fechar o app.
       } else {
+        // Se estiver em outra aba, volta para a tela principal ('home').
         setActiveTab("home");
-        return true;
+        return true; 
       }
     };
 
@@ -38,6 +55,7 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
     return () => backHandler.remove();
   }, [activeTab]);
 
+  // Lida com o pressionamento do botão voltar na barra superior.
   const handleBackPress = () => {
     if (activeTab !== "home") {
       setActiveTab("home");
@@ -47,6 +65,7 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
+        {/* Barra superior de navegação e informações do usuário. */}
         <TopBar 
           activeTab={activeTab} 
           onSettingsPress={() => setActiveTab("settings")}
@@ -54,6 +73,8 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
           onNotificationPress={() => setNotificationModalVisible(true)}
           onAvatarPress={() => setUserInfoModalVisible(true)}
         />
+        
+        {/* Renderiza o conteúdo principal da tela com base na aba ativa. */}
         <View style={styles.body}>
           {activeTab === "home" && <HomeScreen onNavigate={setActiveTab} />}
           {activeTab === "medications" && (
@@ -64,9 +85,12 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
           {activeTab === "caregiver" && <CaregiverScreen />}
           {activeTab === "pharmacy" && <PharmacyScreen />}
         </View>
+        
+        {/* Abas de navegação inferiores. */}
         <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
       </View>
 
+      {/* Modais */}
       <NotificationModal 
         visible={notificationModalVisible}
         onClose={() => setNotificationModalVisible(false)}
@@ -86,6 +110,9 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
   );
 }
 
+/**
+ * Componente que renderiza a barra superior.
+ */
 function TopBar({ 
   activeTab, 
   onSettingsPress, 
@@ -99,6 +126,7 @@ function TopBar({
   onNotificationPress: () => void;
   onAvatarPress: () => void;
 }) {
+  // Determina se a aba atual é 'settings' para mostrar um botão de voltar ao invés do avatar.
   const isSettings = activeTab === "settings";
 
   return (
@@ -138,6 +166,9 @@ function TopBar({
   );
 }
 
+/**
+ * Componente que renderiza as abas de navegação inferiores.
+ */
 function BottomTabs({
   activeTab,
   onChange,
@@ -183,6 +214,7 @@ function BottomTabs({
   );
 }
 
+// ... Resto do código (modais e estilos) permanece o mesmo ...
 function NotificationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal

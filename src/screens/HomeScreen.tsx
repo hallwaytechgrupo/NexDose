@@ -12,6 +12,16 @@ import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
 import { CaregiverScreen } from "./Caregiver";
 
+/**
+ * @file HomeScreen.tsx
+ * @brief Tela principal (Dashboard) do aplicativo NexDose.
+ * 
+ * Exibe informações vitais para o usuário de relance, incluindo:
+ * - Tempo e detalhes da próxima dose de medicação.
+ * - Status do dispositivo dispensador (ex: bateria).
+ * - Gráfico de aderência semanal.
+ * - Links rápidos para outras áreas importantes (Cuidadores, Farmácia).
+ */
 export function HomeScreen({
   onNavigate,
 }: {
@@ -19,6 +29,10 @@ export function HomeScreen({
 }) {
   return (
     <AppScreen>
+      {/* 
+        Cartão principal em destaque mostrando a próxima medicação.
+        Usa o componente GlassCard para um visual translúcido moderno.
+      */}
       <GlassCard>
         <Text style={styles.heroLabel}>Proxima dose em</Text>
         <View style={styles.ringWrap}>
@@ -31,11 +45,13 @@ export function HomeScreen({
         </View>
         <GradientAction
           label="Confirmar agora"
-          onPress={() => onNavigate("history")}
+          onPress={() => onNavigate("history")} // Navega para o histórico simulando a confirmação.
         />
       </GlassCard>
 
+      {/* Grade contendo o status do dispositivo e o gráfico de aderência */}
       <View style={styles.grid}>
+        {/* Cartão de status do dispositivo IoT */}
         <SurfaceCard muted>
           <View style={styles.statusHeader}>
             <Feather name="battery-charging" size={24} color={colors.text} />
@@ -48,18 +64,21 @@ export function HomeScreen({
           </Text>
         </SurfaceCard>
 
+        {/* Cartão do gráfico de aderência semanal */}
         <SurfaceCard>
           <View style={styles.chartHeader}>
             <Text style={styles.cardTitle}>Aderencia semanal</Text>
             <Feather name="arrow-up-circle" size={24} color={colors.primary} />
           </View>
           <View style={styles.chartRow}>
+            {/* Renderiza dinamicamente as barras do gráfico com base nos dados 'adherence' */}
             {adherence.map((value, index) => (
               <View
                 key={`${value}-${index}`}
                 style={[
                   styles.bar,
                   { height: value },
+                  // Destaca o dia atual (índice 4 no mock)
                   index === 4 ? styles.barActive : styles.barIdle,
                 ]}
               />
@@ -75,17 +94,17 @@ export function HomeScreen({
         </SurfaceCard>
       </View>
 
+      {/* Seção de acesso rápido (atalhos) */}
       <View style={styles.sectionBlock}>
         <SectionTitle>Acesso rapido</SectionTitle>
         <View style={styles.actionsGrid}>
+          {/* Mapeia os atalhos disponíveis nos dados simulados (mockData) */}
           {quickActions.map((action) => (
             <Pressable
               key={action.key}
               onPress={() => {
-                
                 if (action.key === "caregiver") onNavigate("caregiver");
                 if (action.key === "pharmacy") onNavigate("pharmacy");
-                
               }}
               style={styles.actionCard}
             >
@@ -105,6 +124,9 @@ export function HomeScreen({
   );
 }
 
+/**
+ * Componente auxiliar para renderizar o botão com gradiente no cartão principal.
+ */
 function GradientAction({
   label,
   onPress,
