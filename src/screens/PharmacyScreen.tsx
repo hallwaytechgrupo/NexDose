@@ -43,7 +43,7 @@ export function PharmacyScreen() {
   const searchNearbyPharmacies = async (lat: number, lon: number) => {
     // ATENÇÃO: Substitua '192.168.1.XX' pelo IP do seu computador na rede Wi-Fi
     // Se for Emulador Android, você pode usar '10.0.2.2'
-    const BACKEND_URL = `http://192.168.15.13:3000/api/farmacias?lat=${lat}&lng=${lon}&keyword=${searchQuery}`;
+    const BACKEND_URL = `http://10.68.55.62:3000/api/farmacias?lat=${lat}&lng=${lon}&keyword=${searchQuery}`;
 
     try {
       const response = await fetch(BACKEND_URL);

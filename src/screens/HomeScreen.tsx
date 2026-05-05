@@ -10,7 +10,7 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
-import { CaregiverScreen } from "./Caregiver";
+
 
 /**
  * @file HomeScreen.tsx
