@@ -4,7 +4,7 @@ Representação das entidades principais do sistema e suas relações.
 
 ## 📊 Visualização
 
-![Diagrama de Classes](./class-diagram.png)
+![Diagrama de Classes](./images/class-diagram.png)
 
 ## 📝 Código Mermaid
 

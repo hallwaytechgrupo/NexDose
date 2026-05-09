@@ -4,7 +4,7 @@ Funcionalidades do sistema por tipo de ator/usuário.
 
 ## 🎯 Visualização
 
-![Diagrama de Casos de Uso](./use-case-diagram.png)
+![Diagrama de Casos de Uso](./images/use-case-diagram.png)
 
 ## 📝 Código Mermaid
 

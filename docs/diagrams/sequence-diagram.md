@@ -4,7 +4,7 @@ Representa o fluxo completo de registro de medicamento e funcionamento do sistem
 
 ## 📈 Visualização
 
-![Diagrama de Sequência](./sequence-diagram.png)
+![Diagrama de Sequência](./images/sequence-diagram.png)
 
 ## 📝 Código Mermaid
 
