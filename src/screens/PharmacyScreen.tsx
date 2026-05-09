@@ -1,21 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, TextInput } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { AppScreen } from '../components/Primitives';
-import { colors } from '../theme/tokens';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import * as Location from "expo-location";
+import { AppScreen } from "../components/Primitives";
+import { getApiBaseUrl } from "../services/api";
+import { colors } from "../theme/tokens";
 
-// A interface agora reflete os dados LIMPOS que vêm do seu Backend
 interface Pharmacy {
-  id: string; 
+  id: string;
   name: string;
   vicinity: string;
   latitude: number;
   longitude: number;
 }
 
-// Crie este pequeno componente fora da sua tela principal
-const FastMarker = ({ pharmacy, pinColor }: { pharmacy: Pharmacy, pinColor: string }) => {
+const FastMarker = ({
+  pharmacy,
+  pinColor,
+}: {
+  pharmacy: Pharmacy;
+  pinColor: string;
+}) => {
   const [trackChanges, setTrackChanges] = useState(true);
 
   return (
@@ -28,8 +33,7 @@ const FastMarker = ({ pharmacy, pinColor }: { pharmacy: Pharmacy, pinColor: stri
       description={pharmacy.vicinity}
       pinColor={pinColor}
       tracksViewChanges={trackChanges}
-      // Assim que o mapa desenhar ele uma vez, ele "congela" e não trava mais o app
-      onLayout={() => setTrackChanges(false)} 
+      onLayout={() => setTrackChanges(false)}
     />
   );
 };
@@ -38,53 +42,53 @@ export function PharmacyScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
-  const [searchQuery, setSearchQuery] = useState('farmácia');
+  const [searchQuery] = useState("farmacia");
 
   const searchNearbyPharmacies = async (lat: number, lon: number) => {
-    // ATENÇÃO: Substitua '192.168.1.XX' pelo IP do seu computador na rede Wi-Fi
-    // Se for Emulador Android, você pode usar '10.0.2.2'
-    const BACKEND_URL = `http://10.68.55.62:3000/api/farmacias?lat=${lat}&lng=${lon}&keyword=${searchQuery}`;
+    const backendUrl = `${getApiBaseUrl()}/api/farmacias?lat=${lat}&lng=${lon}&keyword=${encodeURIComponent(searchQuery)}`;
 
     try {
-      const response = await fetch(BACKEND_URL);
+      const response = await fetch(backendUrl);
       const json = await response.json();
-      
-      if (json.status === 'OK' && json.results) {
-        setPharmacies(json.results); // Atualiza o estado com as farmácias limpas
+
+      if (json.status === "OK" && json.results) {
+        setPharmacies(json.results);
       } else {
-        console.warn("Erro retornado pelo nosso backend:", json.error);
+        console.warn("Erro retornado pelo backend:", json.error);
       }
     } catch (error) {
       console.error("Erro ao conectar com o servidor Node:", error);
-      setErrorMsg("Erro ao buscar farmácias do servidor.");
+      setErrorMsg("Erro ao buscar farmacias do servidor.");
     }
   };
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('A permissão para acessar a localização foi negada');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setErrorMsg("A permissao para acessar a localizacao foi negada");
         return;
       }
 
-      // Primeiro tentamos pegar o cache do GPS (Instantâneo)
-      let location = await Location.getLastKnownPositionAsync({});
+      let currentLocation = await Location.getLastKnownPositionAsync({});
 
-      // Se tiver a posição antiga, já desenha o mapa na hora!
-      if (location) {
-        setLocation(location);
-        searchNearbyPharmacies(location.coords.latitude, location.coords.longitude);
+      if (currentLocation) {
+        setLocation(currentLocation);
+        searchNearbyPharmacies(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude
+        );
       }
 
-      // Depois, pede a posição exata com precisão menor (Mais rápido)
-      // Accuracy.Balanced é muito mais rápido que Accuracy.Highest
-      location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced, 
+      currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
       });
 
-      setLocation(location);
-      searchNearbyPharmacies(location.coords.latitude, location.coords.longitude);
+      setLocation(currentLocation);
+      searchNearbyPharmacies(
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude
+      );
     })();
   }, []);
 
@@ -94,12 +98,28 @@ export function PharmacyScreen() {
     }
   }, [location, searchQuery]);
 
-  if (errorMsg) return <AppScreen><View style={styles.center}><Text>{errorMsg}</Text></View></AppScreen>;
-  if (!location) return <AppScreen><View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /><Text>Obtendo localização...</Text></View></AppScreen>;
+  if (errorMsg) {
+    return (
+      <AppScreen>
+        <View style={styles.center}>
+          <Text>{errorMsg}</Text>
+        </View>
+      </AppScreen>
+    );
+  }
 
+  if (!location) {
+    return (
+      <AppScreen>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text>Obtendo localizacao...</Text>
+        </View>
+      </AppScreen>
+    );
+  }
 
   return (
-   
     <View style={styles.container}>
       <MapView
         provider={PROVIDER_GOOGLE}
@@ -110,18 +130,19 @@ export function PharmacyScreen() {
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
-        showsUserLocation={true}
+        showsUserLocation
       >
         {pharmacies.map((pharmacy) => (
-          <FastMarker key={pharmacy.id} pharmacy={pharmacy} pinColor={colors.primary} />
+          <FastMarker
+            key={pharmacy.id}
+            pharmacy={pharmacy}
+            pinColor={colors.primary}
+          />
         ))}
       </MapView>
-     
     </View>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -130,29 +151,10 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  input: {
-    height: 48,
-    fontSize: 16,
-    color: colors.text,
-  },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 16,
   },
 });

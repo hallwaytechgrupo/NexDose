@@ -15,6 +15,7 @@ export default {
     },
     android: {
       package: "com.nexdose.mobile",
+      softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
       config: {
         googleMaps: {

@@ -2,74 +2,93 @@ import React, { useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AppShell } from "./src/AppShell";
-import { LoginScreen } from "./src/screens/LoginScreen";
 import { CreateAccountScreen } from "./src/screens/CreateAccount";
+import { LoginScreen } from "./src/screens/LoginScreen";
+import {
+  AuthUser,
+  UpdateProfileResponse,
+  login,
+  register,
+  updateProfile,
+} from "./src/services/api";
 
-
-
-/**
- * @file App.tsx
- * @brief Ponto de entrada principal do aplicativo NexDose.
- * 
- * Este componente gerencia o estado de autenticação e renderiza a tela apropriada:
- * - Tela de Login
- * - Tela de Criação de Conta
- * - O shell principal do aplicativo (AppShell) após o login bem-sucedido.
- */
-
-// Define os tipos de telas disponíveis para navegação no nível raiz.
 type Screen = "login" | "createAccount" | "app";
 
 export default function App() {
-  // O estado 'screen' controla qual tela principal é exibida. O valor inicial é 'login'.
   const [screen, setScreen] = useState<Screen>("login");
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  /**
-   * Renderiza a tela correta com base no estado atual de 'screen'.
-   * @returns O componente de tela a ser renderizado.
-   */
+  const handleLogin = async (email: string, password: string) => {
+    const response = await login({ email, password });
+    setAuthUser(response.user);
+    setToken(response.token);
+    setScreen("app");
+  };
+
+  const handleRegister = async (payload: {
+    name: string;
+    email: string;
+    password: string;
+    role: "responsavel" | "caregiver";
+  }) => {
+    await register(payload);
+    await handleLogin(payload.email, payload.password);
+  };
+
+  const handleProfileUpdate = async (payload: {
+    name: string;
+    email: string;
+    password?: string;
+  }) => {
+    if (!token) {
+      throw new Error("Sessao expirada. Faca login novamente.");
+    }
+
+    const response = await updateProfile(token, payload);
+    setAuthUser(response.user);
+    return response;
+  };
+
+  const handleLogout = () => {
+    setAuthUser(null);
+    setToken(null);
+    setScreen("login");
+  };
+
   const renderScreen = () => {
     switch (screen) {
       case "login":
         return (
-          <SafeAreaProvider>
-          <LoginScreen 
-            // Navega para o shell principal do app em caso de login bem-sucedido.
-            onLogin={() => setScreen("app")}
-            // Navega para a tela de criação de conta.
+          <LoginScreen
+            onLogin={handleLogin}
             onNavigateToSignUp={() => setScreen("createAccount")}
           />
-          </SafeAreaProvider>
         );
       case "createAccount":
         return (
-          <SafeAreaProvider>
-          <CreateAccountScreen 
-            // Navega para o shell principal do app se a aba for 'home'.
-            onNavigate={(tab) => {
-              if (tab === "home") {
-                setScreen("app");
-              }
-            }}
-            // Navega de volta para a tela de login.
+          <CreateAccountScreen
+            onRegister={handleRegister}
             onNavigateToLogin={() => setScreen("login")}
           />
-          </SafeAreaProvider>
         );
       case "app":
-        // Renderiza o shell principal do aplicativo e passa a função de logout.
-        return <AppShell onLogout={() => setScreen("login")} />;
+        return authUser && token ? (
+          <AppShell
+            onLogout={handleLogout}
+            onProfileUpdate={handleProfileUpdate}
+            token={token}
+            user={authUser}
+          />
+        ) : null;
       default:
-        // Retorna nulo se nenhum estado de tela corresponder.
         return null;
     }
   };
 
   return (
     <SafeAreaProvider>
-      {/* Configura a barra de status do sistema com ícones escuros. */}
       <StatusBar style="dark" />
-      {/* Renderiza a tela ativa. */}
       {renderScreen()}
     </SafeAreaProvider>
   );

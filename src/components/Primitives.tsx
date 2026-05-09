@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, forwardRef } from "react";
 import {
   Pressable,
   ScrollView,
@@ -110,36 +110,52 @@ export function Chip({
   );
 }
 
-export function InputField({
-  label,
-  value,
-  placeholder,
-  secureTextEntry,
-  onChangeText, // Adicionado
-  keyboardType,   // Adicionado
-}: {
+export const InputField = forwardRef<TextInput, {
   label: string;
   value?: string;
   placeholder?: string;
   secureTextEntry?: boolean;
-  onChangeText?: (text: string) => void; // Adicionado
-  keyboardType?: React.ComponentProps<typeof TextInput>['keyboardType']; // Adicionado
-}) {
+  onChangeText?: (text: string) => void;
+  keyboardType?: React.ComponentProps<typeof TextInput>["keyboardType"];
+  returnKeyType?: React.ComponentProps<typeof TextInput>["returnKeyType"];
+  onSubmitEditing?: React.ComponentProps<typeof TextInput>["onSubmitEditing"];
+  blurOnSubmit?: boolean;
+  autoCapitalize?: React.ComponentProps<typeof TextInput>["autoCapitalize"];
+  autoCorrect?: boolean;
+}> (function InputField({
+  label,
+  value,
+  placeholder,
+  secureTextEntry,
+  onChangeText,
+  keyboardType,
+  returnKeyType,
+  onSubmitEditing,
+  blurOnSubmit,
+  autoCapitalize,
+  autoCorrect,
+}, ref) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
+        ref={ref}
         value={value} 
         placeholder={placeholder}
         placeholderTextColor={colors.outline}
         style={styles.input}
         secureTextEntry={secureTextEntry}
         onChangeText={onChangeText} 
-        keyboardType={keyboardType}   
+        keyboardType={keyboardType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={blurOnSubmit}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
       />
     </View>
   );
-}
+});
 
 export function ToggleRow({
   icon,

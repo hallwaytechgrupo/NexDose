@@ -1,5 +1,16 @@
-import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState, useRef } from "react";
+import { 
+  Pressable, 
+  StyleSheet, 
+  Text, 
+  View, 
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView
+} from "react-native";
 import {
   AppScreen,
   GradientButton,
@@ -91,6 +102,10 @@ function CaregiverList({
 }) {
   return (
     <AppScreen>
+      <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardContainer}
+      >
       <View style={styles.headerCopy}>
         <Text style={styles.pageTitle}>Cuidadores</Text>
         <Text style={styles.pageSubtitle}>
@@ -116,6 +131,7 @@ function CaregiverList({
       </View>
 
       <GradientButton title="Adicionar Novo Cuidador" onPress={onAdd} />
+   </KeyboardAvoidingView>
     </AppScreen>
   );
 }
@@ -132,6 +148,9 @@ function AddCaregiverForm({
   const [email, setEmail] = useState("");
   const [tel, setTel] = useState("");
 
+  const emailRef = useRef<TextInput>(null);
+  const telRef = useRef<TextInput>(null);
+
   const handleAdd = () => {
     if (name && email) {
       onAdd(name, email, tel);
@@ -139,32 +158,79 @@ function AddCaregiverForm({
   };
 
   return (
-    <AppScreen>
-      <View style={styles.headerCopy}>
-        <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
-        <Text style={styles.pageSubtitle}>
-          Preencha os dados abaixo para convidar.
-        </Text>
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.keyboardAvoidingContainer}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.headerCopy}>
+            <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
+            <Text style={styles.pageSubtitle}>
+              Preencha os dados abaixo para convidar.
+            </Text>
+          </View>
 
-      <SurfaceCard>
-        <View style={styles.form}>
-          <InputField label="Nome completo" value={name} onChangeText={setName} />
-          <InputField label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
-          <InputField label="Telefone" value={tel} onChangeText={setTel} keyboardType="phone-pad" />
-        </View>
-      </SurfaceCard>
+          <SurfaceCard>
+            <View style={styles.form}>
+              <InputField 
+                label="Nome completo" 
+                value={name} 
+                onChangeText={setName} 
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+              <InputField 
+                ref={emailRef}
+                label="E-mail" 
+                value={email} 
+                onChangeText={setEmail} 
+                keyboardType="email-address" 
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => telRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+              <InputField 
+                ref={telRef}
+                label="Telefone" 
+                value={tel} 
+                onChangeText={setTel} 
+                keyboardType="phone-pad" 
+                returnKeyType="done"
+                onSubmitEditing={handleAdd}
+              />
+            </View>
+          </SurfaceCard>
 
-      <View style={styles.formActions}>
-        <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
-        <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
-      </View>
-    </AppScreen>
+          <View style={styles.formActions}>
+            <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
+            <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 // --- Styles ---
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 140, // Mantém o mesmo espaçamento do AppScreen
+    gap: 24,
+  },
   headerCopy: {
     gap: 8,
     marginBottom: 24,
@@ -241,5 +307,8 @@ const styles = StyleSheet.create({
       color: colors.textMuted,
       fontWeight: 'bold',
       fontSize: 16
+  },
+  keyboardContainer: {
+    flex: 1
   }
-});     
+});

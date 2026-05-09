@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, FlatList, Pressable, StyleSheet, ScrollView } from 'react-native';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useState, useEffect } from 'react';
+import { View, Text, Modal, FlatList, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   AppScreen,
@@ -13,89 +13,238 @@ import {
 import {
   intervals,
   medicationTypes,
-  schedulePreview,
-  TabKey,
 } from "../data/mockData";
 import { colors, radius } from "../theme/tokens";
+import { createMedication, getMedications, updateMedication, deleteMedication } from '../services/api'; 
 
+// MOCK TOKEN - Substitua isso pela lógica real de pegar o token do contexto/estado
+const MOCK_TOKEN = "seu_token_jwt_aqui";
 
-export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: TabKey) => void; }) {
-  // 1. Estados para a Lista e para o Modal
+export default function MedicationsScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [medicationsList, setMedicationsList] = useState([
-    // Exemplo de item inicial para você ver a lista funcionando
-    { id: '1', name: 'Dipirona 500mg', interval: '8h', nextDose: '14:00' }
-  ]);
+  const [medicationsList, setMedicationsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 2. Estados do seu formulário (mantidos do seu código original)
+  // --- ESTADOS DO FORMULÁRIO (Criação e Edição) ---
+  const [editingId, setEditingId] = useState<string | null>(null); // Se tiver um ID, estamos editando
+  const [medicationName, setMedicationName] = useState('');
+  const [dosage, setDosage] = useState('');
   const [selectedType, setSelectedType] = useState('capsule');
-  const [date, setDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [selectedInterval, setSelectedInterval] = useState('8h');
+  const [selectedInterval, setSelectedInterval] = useState(8);
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
-  const onChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
+  // Carregar os medicamentos quando a tela for montada
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+
+  const fetchMedications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getMedications(MOCK_TOKEN);
+      
+      const formattedData = data.map((med: any) => ({
+        id: String(med.id),
+        name: med.name,
+        dosage: med.dosage || '',
+        interval: med.interval_hours,
+        nextDose: med.start_time ? med.start_time.substring(0, 5) : '--:--', 
+      }));
+      
+      setMedicationsList(formattedData);
+    } catch (error) {
+      console.error("Erro ao buscar medicamentos:", error);
+      setMedicationsList([
+          { id: 'mock-1', name: 'Dipirona', dosage: '500mg', interval: 8, nextDose: '14:00' }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onDateChange = (_event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || startDate;
     setShowPicker(false);
-    setDate(currentDate);
+    setStartDate(currentDate);
   };
 
   const showTimepicker = () => {
     setShowPicker(true);
   };
 
-  // 3. Função para salvar e fechar o modal
-  const handleSaveMedication = () => {
-    // Aqui você vai adicionar a lógica para salvar no banco/estado global
-    // setMedicationsList([...medicationsList, novoRemedio]);
+  // Prepara o modal para criar um NOVO medicamento
+  const handleOpenCreateModal = () => {
+    setEditingId(null);
+    setMedicationName('');
+    setDosage('');
+    setStartDate(new Date());
+    setSelectedInterval(8);
+    setIsModalVisible(true);
+  };
+
+  // Prepara o modal para EDITAR um medicamento existente
+  const handleOpenEditModal = (medication: any) => {
+    setEditingId(medication.id);
+    setMedicationName(medication.name);
+    setDosage(medication.dosage);
+    setSelectedInterval(medication.interval);
     
-    setIsModalVisible(false); // Fecha o modal após salvar
+    // Tenta recriar a data a partir da string HH:mm (simplificado)
+    const newDate = new Date();
+    if(medication.nextDose !== '--:--'){
+        const [hours, minutes] = medication.nextDose.split(':');
+        newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+    }
+    setStartDate(newDate);
+    
+    setIsModalVisible(true);
+  };
+
+  // Salva a criação ou a edição
+  const handleSaveMedication = async () => {
+    if (!medicationName || !dosage) {
+      Alert.alert("Erro", "Por favor, preencha o nome e a dosagem do medicamento.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        name: medicationName,
+        dosage: dosage,
+        startDate: startDate.toISOString(), 
+        intervalHours: selectedInterval,
+      };
+
+      if (editingId) {
+        // MODO EDIÇÃO
+        console.log("Atualizando backend:", editingId, payload);
+        await updateMedication(MOCK_TOKEN, editingId, payload);
+        Alert.alert("Sucesso", "Medicamento atualizado com sucesso!");
+      } else {
+        // MODO CRIAÇÃO
+        console.log("Enviando para o backend:", payload);
+        await createMedication(MOCK_TOKEN, payload);
+        Alert.alert("Sucesso", "Medicamento registrado com sucesso!");
+      }
+
+      await fetchMedications();
+      setIsModalVisible(false); 
+
+    } catch (error: any) {
+      console.error("Erro ao salvar medicamento:", error);
+      Alert.alert("Erro", "Erro ao conectar com API.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Deleta o medicamento
+  const handleDeleteMedication = async () => {
+    if(!editingId) return;
+
+    Alert.alert(
+      "Confirmar Exclusão",
+      "Tem certeza que deseja deletar este medicamento?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Deletar", 
+          style: "destructive",
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              await deleteMedication(MOCK_TOKEN, editingId);
+              Alert.alert("Sucesso", "Medicamento removido.");
+              await fetchMedications();
+              setIsModalVisible(false);
+            } catch (error) {
+               console.error("Erro ao deletar:", error);
+               Alert.alert("Erro", "Falha ao deletar o medicamento.");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
     <AppScreen useScrollView={false}>
-      {/* ========================================== */}
-      {/* TELA PRINCIPAL: LISTA DE MEDICAMENTOS      */}
-      {/* ========================================== */}
-      <Text style={[styles.pageTitle, { color: colors.primary }]}>Meus Medicamentos</Text>
+      <Text style={[styles.pageTitle, { color: colors.primary }]}>Medicamentos</Text>
 
-      <FlatList
-        data={medicationsList}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <SurfaceCard muted style={styles.medicationCard}>
-            <Text style={styles.medName}>{item.name}</Text>
-            <Text>Intervalo: {item.interval}</Text>
-            <Text>Próxima dose: {item.nextDose}</Text>
-          </SurfaceCard>
-        )}
-        ListEmptyComponent={<Text style={{ color: colors.text }}>Nenhum medicamento registrado ainda.</Text>}
-      />
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ marginTop: 10, color: colors.textMuted }}>Carregando medicamentos...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={medicationsList}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <SurfaceCard muted style={styles.medicationCard}>
+              <View style={styles.cardHeader}>
+                 <View>
+                    <Text style={styles.medName}>{item.name} {item.dosage}</Text>
+                    <Text style={styles.medInfo}>Intervalo: {item.interval}h</Text>
+                    <Text style={styles.medInfo}>Próxima dose: {item.nextDose}</Text>
+                 </View>
+                 <Pressable style={styles.editButton} onPress={() => handleOpenEditModal(item)}>
+                    <Feather name="edit-2" size={20} color={colors.primary} />
+                 </Pressable>
+              </View>
+            </SurfaceCard>
+          )}
+          ListEmptyComponent={
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, textAlign: 'center' }}>Nenhum medicamento registrado ainda.</Text>
+            </View>
+          }
+        />
+      )}
 
-      {/* BOTÃO PARA ABRIR O MODAL */}
       <GradientButton
         title="Novo Medicamento"
-        onPress={() => setIsModalVisible(true)}
+        onPress={handleOpenCreateModal}
       />
 
-      {/* ========================================== */}
-      {/* MODAL DE REGISTRO (O SEU CÓDIGO ORIGINAL)  */}
-      {/* ========================================== */}
       <Modal
         visible={isModalVisible}
-        animationType="slide" // Faz o modal subir a partir da base da tela
-        presentationStyle="pageSheet" // No iOS, cria aquele efeito de "carta" que não cobre 100% da tela (opcional)
-        onRequestClose={() => setIsModalVisible(false)} // Permite fechar no botão de voltar do Android
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsModalVisible(false)}
       >
-        {/* Usamos uma View com flex: 1 para ocupar o Modal inteiro */}
         <View style={styles.modalContainer}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>Registrar Novo Medicamento</Text>
+            <View style={styles.modalHeaderRow}>
+               <Text style={[styles.modalTitle, { color: colors.primary }]}>
+                 {editingId ? "Editar Medicamento" : "Registrar Novo Medicamento"}
+               </Text>
+               {editingId && (
+                 <Pressable onPress={handleDeleteMedication} style={styles.deleteIconBtn}>
+                    <Feather name="trash-2" size={24} color={colors.error} />
+                 </Pressable>
+               )}
+            </View>
 
             <SurfaceCard muted>
               <View style={styles.contentBlock}>
                 <InputField
                   label="Nome do medicamento"
-                  placeholder="Ex: Amoxicilina 500mg"
+                  placeholder="Ex: Amoxicilina"
+                  value={medicationName}
+                  onChangeText={setMedicationName}
+                />
+                <InputField
+                  label="Dosagem"
+                  placeholder="Ex: 500mg"
+                  value={dosage}
+                  onChangeText={setDosage}
                 />
 
                 <View style={styles.contentBlock}>
@@ -137,7 +286,7 @@ export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: Ta
                     <Pressable onPress={showTimepicker}>
                       <View style={styles.timePicker}>
                         <Text style={styles.timePickerMain}>
-                          {date.toLocaleTimeString([], {
+                          {startDate.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -147,22 +296,22 @@ export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: Ta
                     {showPicker && (
                       <DateTimePicker
                         testID="dateTimePicker"
-                        value={date}
+                        value={startDate}
                         mode={"time"}
                         is24Hour={true}
                         display="default"
-                        onChange={onChange}
+                        onChange={onDateChange}
                       />
                     )}
                   </View>
 
                   <View style={styles.column}>
-                    <SectionTitle>Intervalo</SectionTitle>
+                    <SectionTitle>Intervalo (em horas)</SectionTitle>
                     <View style={styles.chipsWrap}>
                       {intervals.map((interval) => (
                         <Chip
                           key={interval}
-                          label={interval}
+                          label={`${interval}h`}
                           active={interval === selectedInterval}
                           onPress={() => setSelectedInterval(interval)}
                         />
@@ -171,34 +320,17 @@ export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: Ta
                   </View>
                 </View>
 
-                <View style={styles.timelineBlock}>
-                  <View style={styles.timelineHeader}>
-                    <Text style={styles.timelineTitle}>Próximas doses estimadas</Text>
-                  </View>
-                  <View style={styles.scheduleRow}>
-                    {schedulePreview.map((item) => (
-                      <View
-                        key={`${item.label}-${item.value}`}
-                        style={styles.scheduleCard}
-                      >
-                        <Text style={styles.scheduleLabel}>{item.label}</Text>
-                        <Text style={styles.scheduleValue}>{item.value}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
               </View>
             </SurfaceCard>
 
-            {/* Botões reconfigurados para fechar o Modal */}
             <View style={styles.modalButtons}>
               <GradientButton
-                title="Finalizar registro"
+                title={isSubmitting ? "Salvando..." : (editingId ? "Salvar Alterações" : "Finalizar registro")}
                 onPress={handleSaveMedication}
               />
               <GradientButton
                 title="Cancelar"
-                onPress={() => setIsModalVisible(false)} // Fecha o modal sem salvar
+                onPress={() => setIsModalVisible(false)}
                 variant="danger"
               />
             </View>
@@ -209,7 +341,6 @@ export default function MedicationsScreen({ onNavigate }: { onNavigate: (tab: Ta
   );
 }
 
-// Estilos básicos para fazer a estrutura funcionar
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
@@ -224,27 +355,51 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5', // Cor de fundo do modal
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    marginTop: 10,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
-    marginTop: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  deleteIconBtn: {
+    padding: 8,
+    backgroundColor: colors.errorSoft,
+    borderRadius: radius.full,
   },
   medicationCard: {
     padding: 15,
     marginBottom: 10,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  editButton: {
+    padding: 8,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.full,
+  },
   medName: {
+    color: colors.primary, 
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 4, 
+  },
+  medInfo: {
+    color: colors.textMuted,
+    fontSize: 14,
   },
   modalButtons: {
     marginTop: 20,
-    gap: 10, // Espaçamento entre os botões
+    gap: 10,
   },
   headerCopy: {
     gap: 8,

@@ -2,12 +2,29 @@ import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import cors from 'cors';
+import pool from './db';
+import authRoutes from './routes/authRoutes';
+import medicationRoutes from './routes/medicationRoutes'; 
+import caregiverRoutes from './routes/caregiverRoutes'; // Importa as rotas de cuidador
 
 dotenv.config(); 
 
 const app = express();
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] Recebida requisição: ${req.method} ${req.originalUrl}`);
+  next(); // Continua para a próxima função
+});
 app.use(cors());
 app.use(express.json());
+
+// Rotas de Autenticação
+app.use('/auth', authRoutes);
+
+// Rotas de Medicamentos
+app.use('/api/medications', medicationRoutes);
+
+// Rotas de Cuidadores
+app.use('/api/caregivers', caregiverRoutes);
 
 // Crie um "caderninho" de anotações para o cache
 const cache = new Map<string, CleanPharmacy[]>();
@@ -96,7 +113,30 @@ app.get(
   }
 );
 
+// ... (código do servidor) ...
+
+// ... (todo o código anterior do servidor) ...
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor TS rodando na porta ${PORT}`);
-});
+
+const startServer = async () => {
+  try {
+    // 1. TENTA CONECTAR AO BANCO PRIMEIRO
+    const dbClient = await pool.connect();
+    console.log('✅ Conexão com o banco de dados estabelecida com sucesso!');
+    dbClient.release();
+
+    // 2. SE A CONEXÃO FUNCIONAR, INICIA O SERVIDOR
+    app.listen(PORT, () => {
+      console.log(`Servidor TS rodando na porta ${PORT}`);
+    });
+
+  } catch (error) {
+    // 3. SE A CONEXÃO FALHAR, MOSTRA O ERRO E PARA TUDO
+    console.error('❌ ERRO FATAL AO CONECTAR COM O BANCO DE DADOS:');
+    console.error(error);
+    process.exit(1);
+  }
+};
+
+startServer(); // Executa a função para iniciar o processo

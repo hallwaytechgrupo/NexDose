@@ -27,7 +27,8 @@ export const medicationTypes = [
   { key: "drops", label: "Gotas", icon: "water" },
 ];
 
-export const intervals = ["6h", "8h", "12h", "24h"];
+// Alterado para ser um array de números
+export const intervals = [4, 6, 8, 12, 24];
 
 export const schedulePreview = [
   { label: "Hoje", value: "16:30" },

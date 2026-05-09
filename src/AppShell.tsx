@@ -1,50 +1,67 @@
-import React, { useState, useEffect } from "react";
-import { Pressable, StyleSheet, Text, View, Modal, BackHandler,  } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  BackHandler,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text, TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { HomeScreen } from "./screens/HomeScreen";
 import { Feather } from "@expo/vector-icons";
+import { HomeScreen } from "./screens/HomeScreen";
 import MedicationsScreen from "./screens/RegisterMedicationScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { CaregiverScreen } from "./screens/Caregiver";
 import { PharmacyScreen } from "./screens/PharmacyScreen";
+import { UserMenuScreen } from "./screens/UserMenuScreen";
+import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { TabKey } from "./data/mockData";
+import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
-import { GradientButton, InputField } from "./components/Primitives";
+import { AuthUser, UpdateProfileResponse } from "./services/api";
 
-/**
- * @file AppShell.tsx
- * @brief Estrutura principal do aplicativo NexDose.
- * 
- * Este componente serve como o container principal para a maioria das telas do aplicativo.
- * Ele gerencia:
- * - O estado da aba ativa (navegação inferior).
- * - O estado de visibilidade de modais (notificações, informações do usuário, logout).
- * - A interceptação do botão voltar do hardware em dispositivos Android.
- * - A renderização da tela correta baseada na aba ativa.
- */
-export function AppShell({ onLogout }: { onLogout: () => void }) {
-  // Estado para controlar a aba atualmente ativa.
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
-  
-  // Estados para controlar a visibilidade dos modais.
+type AppScreen = TabKey | "userMenu" | "editProfile";
+
+export function AppShell({
+  onLogout,
+  onProfileUpdate,
+  user,
+}: {
+  onLogout: () => void;
+  onProfileUpdate: (payload: {
+    name: string;
+    email: string;
+    password?: string;
+  }) => Promise<UpdateProfileResponse>;
+  user: AuthUser;
+  token: string;
+}) {
+  const [activeScreen, setActiveScreen] = useState<AppScreen>("home");
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  const [userInfoModalVisible, setUserInfoModalVisible] = useState(false);
 
-  // Efeito para lidar com o botão voltar do hardware no Android.
   useEffect(() => {
     const backAction = () => {
-      // Se estiver na tela principal ('home'), ao apertar voltar, mostra o modal de logout.
-      if (activeTab === "home") {
-        setLogoutModalVisible(true);
-        return true; // Retorna true para evitar o comportamento padrão de fechar o app.
-      } else {
-        // Se estiver em outra aba, volta para a tela principal ('home').
-        setActiveTab("home");
-        return true; 
+      if (activeScreen === "editProfile") {
+        setActiveScreen("userMenu");
+        return true;
       }
+
+      if (activeScreen === "userMenu") {
+        setActiveScreen("home");
+        return true;
+      }
+
+      if (activeScreen === "home") {
+        setLogoutModalVisible(true);
+        return true;
+      }
+
+      setActiveScreen("home");
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -53,55 +70,59 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
     );
 
     return () => backHandler.remove();
-  }, [activeTab]);
+  }, [activeScreen]);
 
-  // Lida com o pressionamento do botão voltar na barra superior.
-  const handleBackPress = () => {
-    if (activeTab !== "home") {
-      setActiveTab("home");
-    }
+  const handleNavigation = (screen: AppScreen) => {
+    setActiveScreen(screen);
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
-        {/* Barra superior de navegação e informações do usuário. */}
-        <TopBar 
-          activeTab={activeTab} 
-          onSettingsPress={() => setActiveTab("settings")}
-          onBackPress={handleBackPress}
-          onNotificationPress={() => setNotificationModalVisible(true)}
-          onAvatarPress={() => setUserInfoModalVisible(true)}
-        />
-        
-        {/* Renderiza o conteúdo principal da tela com base na aba ativa. */}
+        {["home", "medications", "history", "settings", "caregiver", "pharmacy"].includes(
+          activeScreen
+        ) && (
+          <TopBar
+            activeTab={activeScreen as TabKey}
+            onBackPress={() => handleNavigation("userMenu")}
+            onNotificationPress={() => setNotificationModalVisible(true)}
+            onAvatarPress={() => handleNavigation("userMenu")}
+            user={user}
+          />
+        )}
+
         <View style={styles.body}>
-          {activeTab === "home" && <HomeScreen onNavigate={setActiveTab} />}
-          {activeTab === "medications" && (
-            <MedicationsScreen onNavigate={setActiveTab} />
+          {activeScreen === "home" && <HomeScreen onNavigate={handleNavigation} />}
+          {activeScreen === "medications" && (
+            <MedicationsScreen onNavigate={handleNavigation} />
           )}
-          {activeTab === "history" && <HistoryScreen />}
-          {activeTab === "settings" && <SettingsScreen />}
-          {activeTab === "caregiver" && <CaregiverScreen />}
-          {activeTab === "pharmacy" && <PharmacyScreen />}
+          {activeScreen === "history" && <HistoryScreen />}
+          {activeScreen === "settings" && <SettingsScreen />}
+          {activeScreen === "caregiver" && <CaregiverScreen />}
+          {activeScreen === "pharmacy" && <PharmacyScreen />}
+          {activeScreen === "userMenu" && (
+            <UserMenuScreen onNavigate={handleNavigation} onLogout={() => setLogoutModalVisible(true)} />
+          )}
+          {activeScreen === "editProfile" && (
+            <EditProfileScreen
+              onNavigate={handleNavigation}
+              onProfileUpdate={onProfileUpdate}
+              user={user}
+            />
+          )}
         </View>
-        
-        {/* Abas de navegação inferiores. */}
-        <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
+
+        {["home", "medications", "history"].includes(activeScreen) && (
+          <BottomTabs activeTab={activeScreen as TabKey} onChange={handleNavigation} />
+        )}
       </View>
 
-      {/* Modais */}
-      <NotificationModal 
+      <NotificationModal
         visible={notificationModalVisible}
         onClose={() => setNotificationModalVisible(false)}
       />
 
-      <UserInfoModal
-        visible={userInfoModalVisible}
-        onClose={() => setUserInfoModalVisible(false)}
-      />
-
-      <LogoutModal 
+      <LogoutModal
         visible={logoutModalVisible}
         onLogout={onLogout}
         onContinue={() => setLogoutModalVisible(false)}
@@ -110,29 +131,26 @@ export function AppShell({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-/**
- * Componente que renderiza a barra superior.
- */
-function TopBar({ 
-  activeTab, 
-  onSettingsPress, 
+function TopBar({
+  activeTab,
   onBackPress,
   onNotificationPress,
-  onAvatarPress
-}: { 
-  activeTab: TabKey; 
-  onSettingsPress: () => void;
+  onAvatarPress,
+  user,
+}: {
+  activeTab: TabKey;
   onBackPress: () => void;
   onNotificationPress: () => void;
   onAvatarPress: () => void;
+  user: AuthUser;
 }) {
-  // Determina se a aba atual é 'settings' para mostrar um botão de voltar ao invés do avatar.
   const isSettings = activeTab === "settings";
+  const roleLabel = user.role === "responsavel" ? "Responsavel" : "Cuidador";
 
   return (
     <View style={styles.topBar}>
-      <Pressable 
-        style={styles.profileBlock} 
+      <Pressable
+        style={styles.profileBlock}
         onPress={isSettings ? onBackPress : onAvatarPress}
       >
         <View style={styles.avatar}>
@@ -144,11 +162,11 @@ function TopBar({
         </View>
         <View style={styles.profileCopy}>
           <Text style={styles.topTitle}>
-            {isSettings ? "Configuracoes" : "Ola, Maria!"}
+            {isSettings ? "Configuracoes" : `Ola, ${user.name}!`}
           </Text>
           {!isSettings && (
             <View style={styles.statusRow}>
-              <Text style={styles.statusPill}>Dispenser online</Text>
+              <Text style={styles.statusPill}>{roleLabel}</Text>
               <Feather name="wifi" size={12} color={colors.secondary} />
             </View>
           )}
@@ -158,17 +176,11 @@ function TopBar({
         <Pressable onPress={onNotificationPress}>
           <Feather name="bell" size={24} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={onSettingsPress}>
-          <Feather name="settings" size={24} color={colors.textMuted} />
-        </Pressable>
       </View>
     </View>
   );
 }
 
-/**
- * Componente que renderiza as abas de navegação inferiores.
- */
 function BottomTabs({
   activeTab,
   onChange,
@@ -176,7 +188,11 @@ function BottomTabs({
   activeTab: TabKey;
   onChange: (tab: TabKey) => void;
 }) {
-  const items: Array<{ key: TabKey; label: string; icon: React.ComponentProps<typeof Feather>['name'] }> = [
+  const items: Array<{
+    key: TabKey;
+    label: string;
+    icon: React.ComponentProps<typeof Feather>["name"];
+  }> = [
     { key: "home", label: "Inicio", icon: "home" },
     { key: "medications", label: "Medicamentos", icon: "plus-square" },
     { key: "history", label: "Historico", icon: "archive" },
@@ -188,7 +204,11 @@ function BottomTabs({
         const active = item.key === activeTab;
         const content = (
           <>
-            <Feather name={item.icon} size={24} color={active ? "white" : colors.text} />
+            <Feather
+              name={item.icon}
+              size={24}
+              color={active ? "white" : colors.text}
+            />
             <Text style={[styles.tabLabel, active && styles.tabTextActive]}>
               {item.label}
             </Text>
@@ -214,28 +234,30 @@ function BottomTabs({
   );
 }
 
-// ... Resto do código (modais e estilos) permanece o mesmo ...
-function NotificationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function NotificationModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable 
-        style={styles.modalOverlay} 
-        onPress={onClose}
-      >
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
         <View style={styles.notificationModal}>
           <View style={styles.notificationHeader}>
-            <Text style={styles.notificationTitle}>Notificações</Text>
+            <Text style={styles.notificationTitle}>Notificacoes</Text>
             <Pressable onPress={onClose}>
               <Feather name="x" size={24} color={colors.text} />
             </Pressable>
           </View>
           <View style={styles.notificationContent}>
-            <Text style={styles.notificationEmpty}>Nenhuma notificação no momento</Text>
+            <Text style={styles.notificationEmpty}>Nenhuma notificacao no momento</Text>
           </View>
         </View>
       </Pressable>
@@ -243,88 +265,47 @@ function NotificationModal({ visible, onClose }: { visible: boolean; onClose: ()
   );
 }
 
-function UserInfoModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [name, setName] = useState("Maria Oliveira");
-  const [email, setEmail] = useState("maria@email.com");
-  const [tel, setTel] = useState("(11) 99999-9999");
-
-  const handleSave = () => {
-    // TODO: Implement save logic
-    onClose();
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable 
-        style={styles.modalOverlay} 
-        onPress={onClose}
-      >
-        <View style={styles.userInfoModal}>
-          <View style={styles.notificationHeader}>
-            <Text style={styles.notificationTitle}>Editar Perfil</Text>
-            <Pressable onPress={onClose}>
-              <Feather name="x" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-          <View style={styles.userInfoContent}>
-            <Pressable style={styles.changePhotoButton}>
-              <Feather name="camera" size={16} color={colors.primary} />
-              <Text style={styles.changePhotoButtonText}>Mudar foto do perfil</Text>
-            </Pressable>
-            <InputField label="Nome completo" value={name} onChangeText={setName} />
-            <InputField label="E-mail" value={email} onChangeText={setEmail} />
-            <InputField label= "telefone" value={tel} onChangeText={setTel} keyboardType="phone-pad" />
-            <InputField label="Nova Senha" secureTextEntry placeholder="Deixe em branco para não alterar" />
-            <InputField label="Confirmar nova senha" secureTextEntry placeholder="Confirme a nova senha" />
-          </View>
-          <View style={styles.userInfoActions}>
-            <View style={{ flex: 1 }}>
-              <GradientButton title="Cancelar" variant="danger" onPress={onClose} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <GradientButton title="Salvar" onPress={handleSave} />
-            </View>
-          </View>
-        </View>
-      </Pressable>
-    </Modal>
-  );
-}
-
-function LogoutModal({ 
-  visible, 
-  onLogout, 
-  onContinue 
-}: { 
-  visible: boolean; 
+function LogoutModal({
+  visible,
+  onLogout,
+  onContinue,
+}: {
+  visible: boolean;
   onLogout: () => void;
   onContinue: () => void;
 }) {
   return (
     <Modal
       visible={visible}
-      transparent={true}
+      transparent
       animationType="fade"
       onRequestClose={onContinue}
     >
-      <Pressable 
-        style={styles.modalOverlay} 
-        onPress={onContinue}
-      >
+      <Pressable style={styles.modalOverlay} onPress={onContinue}>
+
         <View style={styles.logoutModal}>
+
           <Text style={styles.logoutTitle}>Sair do app?</Text>
+
           <Text style={styles.logoutMessage}>Tem certeza que deseja sair?</Text>
-          
+
+
+
           <View style={styles.logoutButtonContainer}>
-            <GradientButton title="Continuar" onPress={onContinue} />
-            <GradientButton title="Sair" onPress={onLogout} variant="danger" />
+            <GradientButton
+                title="Continuar"
+                onPress={onContinue}
+            />
+
+            <GradientButton
+                title="Sair"
+                onPress={onLogout}
+                variant="danger"
+            />
           </View>
+
         </View>
+
       </Pressable>
     </Modal>
   );
@@ -364,11 +345,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    color: colors.primary,
-    fontSize: 18,
-    fontWeight: "800",
-  },
   profileCopy: {
     gap: 4,
   },
@@ -392,17 +368,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textTransform: "uppercase",
   },
-  statusWifi: {
-    color: colors.secondary,
-    fontSize: 12,
-  },
   topActions: {
     flexDirection: "row",
     gap: 12,
-  },
-  topAction: {
-    color: colors.textMuted,
-    fontSize: 18,
   },
   bottomTabs: {
     position: "absolute",
@@ -477,57 +445,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: "center",
   },
-  userInfoModal: {
-    backgroundColor: "white",
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    width: "95%",
-    alignSelf: "center",
-  },
-  userInfoContent: {
-    padding: 16,
-    gap: 16,
-  },
-  changePhotoButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 12,
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.md,
-  },
-  changePhotoButtonText: {
-    color: colors.primary,
-    fontWeight: "700",
-  },
-  userInfoActions: {
-    flexDirection: "row",
-    padding: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-  },
-  modalActionButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: radius.md,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "#E5E7EB",
-  },
-  cancelButtonText: {
-    color: colors.text,
-    fontWeight: "700",
-  },
-  saveButton: {
-    backgroundColor: colors.primary,
-  },
-  saveButtonText: {
-    color: "white",
-    fontWeight: "700",
-  },
   logoutModal: {
     backgroundColor: "white",
     borderRadius: radius.lg,
@@ -549,27 +466,5 @@ const styles = StyleSheet.create({
   logoutButtonContainer: {
     flexDirection: "column",
     gap: 12,
-  },
-  logoutButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: radius.md,
-    alignItems: "center",
-  },
-  continueButton: {
-    backgroundColor: colors.primarySoft,
-  },
-  continueButtonText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  exitButton: {
-    backgroundColor: "#EF4444",
-  },
-  exitButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  }
 });
