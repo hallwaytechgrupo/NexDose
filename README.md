@@ -21,6 +21,14 @@ Atualmente esta configurado para Expo SDK 54.
 - `src/components/Primitives.tsx`: componentes reutilizaveis.
 - `src/theme/tokens.ts`: tokens visuais do design system.
 
+## Documentação Técnica
+
+Veja os diagramas arquiteturais do sistema:
+
+- 📊 [Diagrama de Classes](./docs/diagrams/class-diagram.md) - Entidades e relações do sistema
+- 🎯 [Diagrama de Casos de Uso](./docs/diagrams/use-case-diagram.md) - Funcionalidades por ator
+- 📈 [Diagrama de Sequência](./docs/diagrams/sequence-diagram.md) - Fluxo de registro e lembretes
+
 ## Observacao
 
 Os arquivos HTML originais dentro de `stitch_nexdose_iot_health_ecosystem/` foram mantidos como referencia visual.
