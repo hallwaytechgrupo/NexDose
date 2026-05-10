@@ -28,6 +28,14 @@ Atualmente está configurado para Expo SDK 54.
 
 Agora existe uma base simples de Docker para o backend.
 
+### Desenvolvimento com hot reload
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+Esse fluxo monta o código do backend no container e usa `npm run dev` com hot reload.
+
 ### Subir o backend com Docker
 
 1. Copie `.env.example` para `.env` e preencha `GOOGLE_MAPS_API_KEY`
