@@ -11,6 +11,7 @@ import {
   register,
   updateProfile,
 } from "./src/services/api";
+import * as SecureStore from "expo-secure-store";
 
 type Screen = "login" | "createAccount" | "app";
 
@@ -23,6 +24,7 @@ export default function App() {
     const response = await login({ email, password });
     setAuthUser(response.user);
     setToken(response.token);
+    await SecureStore.setItemAsync("userToken", response.token);
     setScreen("app");
   };
 
@@ -53,6 +55,7 @@ export default function App() {
   const handleLogout = () => {
     setAuthUser(null);
     setToken(null);
+    SecureStore.deleteItemAsync("userToken").catch(() => null);
     setScreen("login");
   };
 

@@ -1,6 +1,6 @@
-export interface CaregiverAssociation {
-  id?: number;
-  caregiverId: number; // ID do usuário com role 'caregiver'
-  sponsorId: number;   // ID do usuário com role 'sponsor' (responsável)
-  createdAt?: Date;
+export interface Caregiver {
+  id: number | string;
+  name: string;
+  email: string;
+  Tel?: string; // Opcional, caso o usuário não tenha cadastrado telefone
 }

@@ -1,15 +1,11 @@
-import React, { useState, useRef } from "react";
-import { 
-  Pressable, 
-  StyleSheet, 
-  Text, 
-  View, 
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator, Alert,
+  Pressable,
+  StyleSheet,
+  Text,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  ScrollView
+  View,
 } from "react-native";
 import {
   AppScreen,
@@ -20,60 +16,117 @@ import {
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
 
-// Type for a caregiver object
-interface Caregiver {
+import {
+  addCaregiver as apiAddCaregiver,
+  getCaregivers as getCaregivers,
+  removeCaregiver as apiRemoveCaregiver,
+} from "../services/api";
+import * as SecureStore from 'expo-secure-store';
+
+async function getStoredToken() {
+  const token = await SecureStore.getItemAsync("userToken");
+  console.log("Token recuperado do cofre:", token);
+  return token;
+
+}
+export interface Caregiver {
   id: string;
   name: string;
   email: string;
-  Tel: string; // Optional phone number
+  Tel: string | null;
 }
 
-// --- Main Screen Component ---
 export function CaregiverScreen() {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addCaregiver = (name: string, email: string, tel: string) => {
-    const newCaregiver = { id: Date.now().toString(), name, email, Tel: tel };
-    setCaregivers([...caregivers, newCaregiver]);
-    setIsAdding(false);
+  // 1. Carrega os dados (Correto)
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const token = await getStoredToken();
+        const data = await getCaregivers(token); // Passe o token se necessário
+        setCaregivers(data);
+      } catch (error) {
+        console.error("Falha ao carregar cuidadores:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  // 2. Funções de Manipulação (Corretas)
+  const handleAddCaregiver = async (name: string, email: string, tel: string) => {
+    try {
+      const token = await getStoredToken();
+      if (!token) throw new Error("Sessão expirada.");
+      const newCaregiver = await apiAddCaregiver(token, name, email, tel);
+      setCaregivers((prev) => [...prev, newCaregiver]);
+      setIsAdding(false);
+      Alert.alert("Sucesso", "Cuidador vinculado!");
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Falha ao vincular.");
+    }
   };
 
-  const removeCaregiver = (id: string) => {
-    setCaregivers(caregivers.filter((c) => c.id !== id));
+  const handleRemoveCaregiver = async (id: string) => {
+    try {
+      const token = await getStoredToken();
+      if (!token) return;
+      await apiRemoveCaregiver(token, id);
+      setCaregivers((prev) => prev.filter((c) => c.id !== id));
+      Alert.alert("Sucesso", "Cuidador removido.");
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível remover.");
+    }
   };
 
-  // If "Add" form is active, show only the form
-  if (isAdding) {
+  // --- LÓGICA DE RENDERIZAÇÃO (DENTRO DA FUNÇÃO) ---
+
+  // Primeiro: Verificamos se está carregando
+  if (isLoading) {
     return (
-      <AddCaregiverForm
-        onAdd={addCaregiver}
-        onCancel={() => setIsAdding(false)}
-      />
+        <AppScreen useScrollView={false}>
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Carregando cuidadores...</Text>
+          </View>
+        </AppScreen>
     );
   }
 
-  // If no caregivers, show empty state
+  // Segundo: Verificamos se o usuário clicou em "Adicionar"
+  if (isAdding) {
+    return (
+        <AddCaregiverForm
+            onAdd={handleAddCaregiver}
+            onCancel={() => setIsAdding(false)}
+        />
+    );
+  }
+
+  // Terceiro: Se a lista estiver vazia
   if (caregivers.length === 0) {
     return <EmptyState onAdd={() => setIsAdding(true)} />;
   }
 
-  // Otherwise, show the list of caregivers
+  // Quarto: Renderiza a lista normal
   return (
-    <CaregiverList
-      caregivers={caregivers}
-      onAdd={() => setIsAdding(true)}
-      onRemove={removeCaregiver}
-    />
+      <CaregiverList
+          caregivers={caregivers}
+          onAdd={() => setIsAdding(true)}
+          onRemove={handleRemoveCaregiver}
+      />
   );
 }
 
-// --- Child Components ---
+// --- Componentes de UI (sem alterações na lógica) ---
 
-// 1. Empty State Component
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <AppScreen>
+    <AppScreen useScrollView={false}>
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
           <Feather name="users" size={48} color={colors.primary} />
@@ -82,7 +135,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <Text style={styles.pageSubtitle}>
           Compartilhe o acompanhamento com um familiar ou amigo de confiança.
         </Text>
-        <View style={{ marginTop: 24, width: '100%' }}>
+        <View style={{ marginTop: 24, width: "100%" }}>
           <GradientButton title="Adicionar Cuidador" onPress={onAdd} />
         </View>
       </View>
@@ -90,7 +143,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-// 2. Caregiver List Component
 function CaregiverList({
   caregivers,
   onAdd,
@@ -102,10 +154,6 @@ function CaregiverList({
 }) {
   return (
     <AppScreen>
-      <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.keyboardContainer}
-      >
       <View style={styles.headerCopy}>
         <Text style={styles.pageTitle}>Cuidadores</Text>
         <Text style={styles.pageSubtitle}>
@@ -117,12 +165,15 @@ function CaregiverList({
         {caregivers.map((caregiver) => (
           <SurfaceCard key={caregiver.id}>
             <View style={styles.caregiverItem}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.caregiverName}>{caregiver.name}</Text>
                 <Text style={styles.caregiverEmail}>{caregiver.email}</Text>
-                <Text style={styles.caregiverTel}>{caregiver.Tel}</Text>
+                <Text style={styles.caregiverTel}>{caregiver.Tel ?? ""}</Text>
               </View>
-              <Pressable onPress={() => onRemove(caregiver.id)} style={styles.removeButton}>
+              <Pressable
+                onPress={() => onRemove(caregiver.id)}
+                style={styles.removeButton}
+              >
                 <Feather name="x" size={20} color={colors.textMuted} />
               </Pressable>
             </View>
@@ -131,12 +182,10 @@ function CaregiverList({
       </View>
 
       <GradientButton title="Adicionar Novo Cuidador" onPress={onAdd} />
-   </KeyboardAvoidingView>
     </AppScreen>
   );
 }
 
-// 3. Add Caregiver Form Component
 function AddCaregiverForm({
   onAdd,
   onCancel,
@@ -152,84 +201,72 @@ function AddCaregiverForm({
   const telRef = useRef<TextInput>(null);
 
   const handleAdd = () => {
-    if (name && email) {
-      onAdd(name, email, tel);
+    if (name.trim() && email.trim()) {
+      onAdd(name.trim(), email.trim(), tel.trim());
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.keyboardAvoidingContainer}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.headerCopy}>
-            <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
-            <Text style={styles.pageSubtitle}>
-              Preencha os dados abaixo para convidar.
-            </Text>
-          </View>
+    <AppScreen>
+      <View style={styles.headerCopy}>
+        <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
+        <Text style={styles.pageSubtitle}>
+          Preencha os dados abaixo para convidar.
+        </Text>
+      </View>
 
-          <SurfaceCard>
-            <View style={styles.form}>
-              <InputField 
-                label="Nome completo" 
-                value={name} 
-                onChangeText={setName} 
-                returnKeyType="next"
-                onSubmitEditing={() => emailRef.current?.focus()}
-                blurOnSubmit={false}
-              />
-              <InputField 
-                ref={emailRef}
-                label="E-mail" 
-                value={email} 
-                onChangeText={setEmail} 
-                keyboardType="email-address" 
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                onSubmitEditing={() => telRef.current?.focus()}
-                blurOnSubmit={false}
-              />
-              <InputField 
-                ref={telRef}
-                label="Telefone" 
-                value={tel} 
-                onChangeText={setTel} 
-                keyboardType="phone-pad" 
-                returnKeyType="done"
-                onSubmitEditing={handleAdd}
-              />
-            </View>
-          </SurfaceCard>
+      <SurfaceCard>
+        <View style={styles.form}>
+          <InputField
+            label="Nome completo"
+            value={name}
+            onChangeText={setName}
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
+            blurOnSubmit={false}
+          />
+          <InputField
+            ref={emailRef}
+            label="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => telRef.current?.focus()}
+            blurOnSubmit={false}
+          />
+          <InputField
+            ref={telRef}
+            label="Telefone"
+            value={tel}
+            onChangeText={setTel}
+            keyboardType="phone-pad"
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+          />
+        </View>
+      </SurfaceCard>
 
-          <View style={styles.formActions}>
-            <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
-            <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      <View style={styles.formActions}>
+        <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
+        <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
+      </View>
+    </AppScreen>
   );
 }
 
-// --- Styles ---
 const styles = StyleSheet.create({
-  keyboardAvoidingContainer: {
+  centered: {
     flex: 1,
-    backgroundColor: colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 140, // Mantém o mesmo espaçamento do AppScreen
-    gap: 24,
+  loadingText: {
+    fontSize: 16,
+    color: colors.textMuted,
   },
   headerCopy: {
     gap: 8,
@@ -245,7 +282,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 24,
   },
-  // Empty State Styles
   emptyContainer: {
     flex: 1,
     alignItems: "center",
@@ -261,7 +297,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // List Styles
   listContainer: {
     gap: 16,
     marginBottom: 24,
@@ -270,6 +305,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
   },
   caregiverName: {
     fontSize: 16,
@@ -287,7 +323,6 @@ const styles = StyleSheet.create({
   removeButton: {
     padding: 8,
   },
-  // Form Styles
   form: {
     gap: 20,
   },
@@ -295,20 +330,4 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 12,
   },
-  actionButton: {
-    paddingVertical: 18,
-    alignItems: "center",
-    borderRadius: radius.lg,
-  },
-  cancelButton: {
-      backgroundColor: '#F3F4F6'
-  },
-  cancelButtonText: {
-      color: colors.textMuted,
-      fontWeight: 'bold',
-      fontSize: 16
-  },
-  keyboardContainer: {
-    flex: 1
-  }
 });

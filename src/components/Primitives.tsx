@@ -1,5 +1,7 @@
 import React, { PropsWithChildren, forwardRef } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,13 +20,19 @@ export function AppScreen({
 }: PropsWithChildren<{ useScrollView?: boolean }>) {
   if (useScrollView) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingContainer}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {children}
-      </ScrollView>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
   return <View style={[styles.screen, styles.content]}>{children}</View>;
@@ -116,6 +124,7 @@ export const InputField = forwardRef<TextInput, {
   placeholder?: string;
   secureTextEntry?: boolean;
   onChangeText?: (text: string) => void;
+  onFocus?: React.ComponentProps<typeof TextInput>["onFocus"];
   keyboardType?: React.ComponentProps<typeof TextInput>["keyboardType"];
   returnKeyType?: React.ComponentProps<typeof TextInput>["returnKeyType"];
   onSubmitEditing?: React.ComponentProps<typeof TextInput>["onSubmitEditing"];
@@ -128,6 +137,7 @@ export const InputField = forwardRef<TextInput, {
   placeholder,
   secureTextEntry,
   onChangeText,
+  onFocus,
   keyboardType,
   returnKeyType,
   onSubmitEditing,
@@ -146,6 +156,7 @@ export const InputField = forwardRef<TextInput, {
         style={styles.input}
         secureTextEntry={secureTextEntry}
         onChangeText={onChangeText} 
+        onFocus={onFocus}
         keyboardType={keyboardType}
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
@@ -189,6 +200,10 @@ export function ToggleRow({
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -196,8 +211,12 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 140,
     gap: 24,
+    padding: 20,
+    paddingBottom: 60, // Adicione esse padding para garantir que o último botão suba
+    flexGrow: 1,
+
+
   },
   card: {
     borderRadius: radius.xl,
@@ -309,4 +328,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+
 });

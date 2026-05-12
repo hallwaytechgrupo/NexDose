@@ -94,7 +94,7 @@ export function AppShell({
         <View style={styles.body}>
           {activeScreen === "home" && <HomeScreen onNavigate={handleNavigation} />}
           {activeScreen === "medications" && (
-            <MedicationsScreen onNavigate={handleNavigation} />
+            <MedicationsScreen />
           )}
           {activeScreen === "history" && <HistoryScreen />}
           {activeScreen === "settings" && <SettingsScreen />}

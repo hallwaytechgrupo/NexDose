@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.15.4:3000";
 
 export interface AuthUser {
   id: number;
@@ -142,6 +142,67 @@ export async function deleteMedication(
   id: string
 ): Promise<any> {
   return request<any>(`/api/medications/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+// --- Novas funções para Cuidadores ---
+
+
+export interface Caregiver {
+  id: string;
+  name: string;
+  email: string;
+  Tel: string | null;
+}
+
+// --- Funções de Cuidadores Atualizadas e Padronizadas ---
+
+/**
+ * Adiciona um cuidador (ou cria convite) via API.
+ * Usa o wrapper 'request' para manter a consistência.
+ */
+export async function addCaregiver(
+    token: string,
+    name: string,
+    email: string,
+    tel: string
+): Promise<Caregiver> {
+  return request<Caregiver>("/api/caregivers", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      caregiverEmail: email,
+      name,
+      Tel: tel // Mantendo o 'T' maiúsculo conforme seu estado anterior
+    }),
+  });
+}
+
+export async function getCaregivers(token: string | null): Promise<Caregiver[]> {
+  return request<Caregiver[]>("/api/caregivers", {
+    method: "GET",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+}
+
+/**
+ * Remove um cuidador através da API.
+ */
+export async function removeCaregiver(
+    token: string,
+    id: string
+): Promise<void> {
+  return request<void>(`/api/caregivers/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
