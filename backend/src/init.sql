@@ -34,8 +34,9 @@ CREATE TABLE caregiver_sponsor_associations (
 -- ---
 CREATE TABLE dispensers (
     id SERIAL PRIMARY KEY,
-    responsavel_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
+    serial_number VARCHAR(255) UNIQUE NOT NULL,
+    responsavel_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    name VARCHAR(255),
     status VARCHAR(50) DEFAULT 'offline',
     last_sync TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

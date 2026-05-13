@@ -29,7 +29,7 @@ export const getMedications = async (req: Request, res: Response) => {
         s.start_time
        FROM medications m
        LEFT JOIN medication_schedules s ON m.id = s.medication_id
-       WHERE m.responsavel_id = $1
+       WHERE m.sponsor_id = $1
        ORDER BY m.created_at DESC`,
       [userId]
     );
@@ -60,7 +60,7 @@ export const createMedication = async (req: Request<{}, {}, CreateMedicationRequ
 
     // 1. Inserir na tabela 'medications'
     const medicationResult = await client.query(
-      `INSERT INTO medications (responsavel_id, name, dosage)
+      `INSERT INTO medications (sponsor_id, name, dosage)
        VALUES ($1, $2, $3)
        RETURNING id, name, dosage, created_at`,
       [userId, name, dosage]
@@ -108,7 +108,7 @@ export const updateMedication = async (req: Request<{ id: string }, {}, UpdateMe
 
     // 1. Verifica se o medicamento pertence ao usuário
     const authCheck = await client.query(
-      'SELECT id FROM medications WHERE id = $1 AND responsavel_id = $2',
+      'SELECT id FROM medications WHERE id = $1 AND sponsor_id = $2',
       [id, userId]
     );
 
@@ -188,7 +188,7 @@ export const deleteMedication = async (req: Request<{ id: string }>, res: Respon
     // Graças ao ON DELETE CASCADE no banco de dados (init.sql), 
     // os agendamentos (medication_schedules) serão apagados automaticamente!
     const result = await pool.query(
-      'DELETE FROM medications WHERE id = $1 AND responsavel_id = $2 RETURNING id',
+      'DELETE FROM medications WHERE id = $1 AND sponsor_id = $2 RETURNING id',
       [id, userId]
     );
 
