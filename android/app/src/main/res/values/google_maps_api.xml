@@ -4,6 +4,6 @@
     Google Maps Android SDK key.
     Replace this value with your real key, or inject it via Gradle in CI.
   -->
-  <string name="google_maps_api_key">AIzaSyBRYyMHDzS355bpfMsWVmN0AfOw4foAPXk</string>
+  <string name="google_maps_api_key"></string>
 </resources>
 
