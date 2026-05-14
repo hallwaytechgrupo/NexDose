@@ -22,11 +22,11 @@ jobs:
         run: npm install
 
       - name: Install EAS CLI
-        # Instalamos via npm para evitar o erro de 'exit code 1' do yarn que ocorreu anteriormente
+       
         run: npm install -g eas-cli
 
       - name: Build with EAS
-        # Este comando envia o build para a nuvem da Expo, economizando recursos do Actions
+  
         run: eas build --platform android --non-interactive --profile preview
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
