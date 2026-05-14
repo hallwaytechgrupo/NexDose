@@ -1,5 +1,4 @@
 name: Expo CI/CD
-
 on:
   push:
     branches:
@@ -15,15 +14,27 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.7.0' # Ou a versão que seu projeto utiliza
+          node-version: '18.7.0'
+          cache: 'npm' # <-- ISSO JÁ CRIA CACHE AUTOMÁTICO PARA NPM
+
+      - name: Cache node_modules
+        id: cache-nodemodules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install dependencies
+        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
         run: npm install
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli@latest
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build with EAS
         run: eas build --platform android --non-interactive --profile preview
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
