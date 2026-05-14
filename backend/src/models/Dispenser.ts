@@ -1,8 +1,10 @@
 export interface Dispenser {
   id?: number;
-  sponsorId: number; // ID do usuário com role 'sponsor' (o init.sql chamou a coluna de responsavel_id)
-  name: string;
+  sponsorId?: number | null; // Dono (role 'sponsor'); pode ser null se ainda nao foi "claimado"
+  serialNumber?: string;
+  name?: string | null;
   status: 'offline' | 'online' | 'low_battery' | string;
   lastSync?: Date;
   createdAt?: Date;
 }
+

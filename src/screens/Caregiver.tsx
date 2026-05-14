@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator, Alert,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -12,6 +11,7 @@ import {
   GradientButton,
   InputField,
   SurfaceCard,
+  ToggleRow,
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
@@ -21,22 +21,21 @@ import {
   getCaregivers as getCaregivers,
   removeCaregiver as apiRemoveCaregiver,
 } from "../services/api";
-import * as SecureStore from 'expo-secure-store';
 
-async function getStoredToken() {
-  const token = await SecureStore.getItemAsync("userToken");
-  console.log("Token recuperado do cofre:", token);
-  return token;
-
-}
 export interface Caregiver {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  Tel: string | null;
+  can_edit_medications?: boolean;
 }
 
-export function CaregiverScreen() {
+export function CaregiverScreen({
+  token,
+  dispenserId,
+}: {
+  token: string;
+  dispenserId: number | null;
+}) {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,8 +44,11 @@ export function CaregiverScreen() {
   useEffect(() => {
     async function loadData() {
       try {
-        const token = await getStoredToken();
-        const data = await getCaregivers(token); // Passe o token se necessário
+        if (!dispenserId) {
+          setCaregivers([]);
+          return;
+        }
+        const data = await getCaregivers(token, dispenserId);
         setCaregivers(data);
       } catch (error) {
         console.error("Falha ao carregar cuidadores:", error);
@@ -55,14 +57,21 @@ export function CaregiverScreen() {
       }
     }
     loadData();
-  }, []);
+  }, [token, dispenserId]);
 
   // 2. Funções de Manipulação (Corretas)
-  const handleAddCaregiver = async (name: string, email: string, tel: string) => {
+  const handleAddCaregiver = async (email: string, canEditMedications: boolean) => {
+    if (!dispenserId) {
+      Alert.alert("Selecione um dispositivo", "Vá em Dispositivos e selecione um dispenser para continuar.");
+      return;
+    }
+
     try {
-      const token = await getStoredToken();
-      if (!token) throw new Error("Sessão expirada.");
-      const newCaregiver = await apiAddCaregiver(token, name, email, tel);
+      const newCaregiver = await apiAddCaregiver(token, {
+        dispenserId,
+        caregiverEmail: email,
+        canEditMedications,
+      });
       setCaregivers((prev) => [...prev, newCaregiver]);
       setIsAdding(false);
       Alert.alert("Sucesso", "Cuidador vinculado!");
@@ -71,11 +80,14 @@ export function CaregiverScreen() {
     }
   };
 
-  const handleRemoveCaregiver = async (id: string) => {
+  const handleRemoveCaregiver = async (id: number) => {
+    if (!dispenserId) {
+      Alert.alert("Selecione um dispositivo", "Vá em Dispositivos e selecione um dispenser para continuar.");
+      return;
+    }
+
     try {
-      const token = await getStoredToken();
-      if (!token) return;
-      await apiRemoveCaregiver(token, id);
+      await apiRemoveCaregiver(token, id, dispenserId);
       setCaregivers((prev) => prev.filter((c) => c.id !== id));
       Alert.alert("Sucesso", "Cuidador removido.");
     } catch (error) {
@@ -104,6 +116,22 @@ export function CaregiverScreen() {
             onAdd={handleAddCaregiver}
             onCancel={() => setIsAdding(false)}
         />
+    );
+  }
+
+  if (!dispenserId) {
+    return (
+      <AppScreen useScrollView={false}>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <Feather name="package" size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.pageTitle}>Selecione um dispositivo</Text>
+          <Text style={styles.pageSubtitle}>
+            Vá em Dispositivos e escolha um dispenser para gerenciar cuidadores.
+          </Text>
+        </View>
+      </AppScreen>
     );
   }
 
@@ -150,7 +178,7 @@ function CaregiverList({
 }: {
   caregivers: Caregiver[];
   onAdd: () => void;
-  onRemove: (id: string) => void;
+  onRemove: (id: number) => void;
 }) {
   return (
     <AppScreen>
@@ -168,7 +196,9 @@ function CaregiverList({
               <View style={{ flex: 1 }}>
                 <Text style={styles.caregiverName}>{caregiver.name}</Text>
                 <Text style={styles.caregiverEmail}>{caregiver.email}</Text>
-                <Text style={styles.caregiverTel}>{caregiver.Tel ?? ""}</Text>
+                <Text style={styles.caregiverTel}>
+                  {caregiver.can_edit_medications ? "Pode editar medicamentos" : "Somente leitura"}
+                </Text>
               </View>
               <Pressable
                 onPress={() => onRemove(caregiver.id)}
@@ -190,19 +220,15 @@ function AddCaregiverForm({
   onAdd,
   onCancel,
 }: {
-  onAdd: (name: string, email: string, tel: string) => void;
+  onAdd: (email: string, canEditMedications: boolean) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tel, setTel] = useState("");
-
-  const emailRef = useRef<TextInput>(null);
-  const telRef = useRef<TextInput>(null);
+  const [canEditMedications, setCanEditMedications] = useState(false);
 
   const handleAdd = () => {
-    if (name.trim() && email.trim()) {
-      onAdd(name.trim(), email.trim(), tel.trim());
+    if (email.trim()) {
+      onAdd(email.trim(), canEditMedications);
     }
   };
 
@@ -218,33 +244,21 @@ function AddCaregiverForm({
       <SurfaceCard>
         <View style={styles.form}>
           <InputField
-            label="Nome completo"
-            value={name}
-            onChangeText={setName}
-            returnKeyType="next"
-            onSubmitEditing={() => emailRef.current?.focus()}
-            blurOnSubmit={false}
-          />
-          <InputField
-            ref={emailRef}
             label="E-mail"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            returnKeyType="next"
-            onSubmitEditing={() => telRef.current?.focus()}
-            blurOnSubmit={false}
-          />
-          <InputField
-            ref={telRef}
-            label="Telefone"
-            value={tel}
-            onChangeText={setTel}
-            keyboardType="phone-pad"
             returnKeyType="done"
             onSubmitEditing={handleAdd}
+          />
+          <ToggleRow
+            icon="edit-3"
+            title="Pode editar medicamentos"
+            subtitle="Permite criar/alterar/remover medicamentos deste dispositivo."
+            value={canEditMedications}
+            onValueChange={setCanEditMedications}
           />
         </View>
       </SurfaceCard>

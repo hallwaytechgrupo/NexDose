@@ -1,4 +1,4 @@
-export type TabKey = "home" | "medications" | "history" | "settings" | "caregiver" | "pharmacy";
+export type TabKey = "home" | "medications" | "history" | "settings" | "caregiver" | "pharmacy" | "dispenser";
 
 export const adherence = [60, 80, 40, 95, 100, 10, 10];
 

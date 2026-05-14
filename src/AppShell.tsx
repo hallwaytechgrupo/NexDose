@@ -16,6 +16,7 @@ import { HistoryScreen } from "./screens/HistoryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { CaregiverScreen } from "./screens/Caregiver";
 import { PharmacyScreen } from "./screens/PharmacyScreen";
+import { DispenserScreen } from "./screens/DispenserScreen";
 import { UserMenuScreen } from "./screens/UserMenuScreen";
 import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { TabKey } from "./data/mockData";
@@ -29,6 +30,7 @@ export function AppShell({
   onLogout,
   onProfileUpdate,
   user,
+  token,
 }: {
   onLogout: () => void;
   onProfileUpdate: (payload: {
@@ -42,6 +44,7 @@ export function AppShell({
   const [activeScreen, setActiveScreen] = useState<AppScreen>("home");
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [selectedDispenserId, setSelectedDispenserId] = useState<number | null>(null);
 
   useEffect(() => {
     const backAction = () => {
@@ -79,7 +82,7 @@ export function AppShell({
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
-        {["home", "medications", "history", "settings", "caregiver", "pharmacy"].includes(
+        {["home", "medications", "history", "settings", "caregiver", "pharmacy", "dispenser"].includes(
           activeScreen
         ) && (
           <TopBar
@@ -94,12 +97,19 @@ export function AppShell({
         <View style={styles.body}>
           {activeScreen === "home" && <HomeScreen onNavigate={handleNavigation} />}
           {activeScreen === "medications" && (
-            <MedicationsScreen />
+            <MedicationsScreen token={token} dispenserId={selectedDispenserId} />
           )}
           {activeScreen === "history" && <HistoryScreen />}
           {activeScreen === "settings" && <SettingsScreen />}
-          {activeScreen === "caregiver" && <CaregiverScreen />}
+          {activeScreen === "caregiver" && <CaregiverScreen token={token} dispenserId={selectedDispenserId} />}
           {activeScreen === "pharmacy" && <PharmacyScreen />}
+          {activeScreen === "dispenser" && (
+            <DispenserScreen
+              token={token}
+              selectedDispenserId={selectedDispenserId}
+              onSelectDispenser={(id) => setSelectedDispenserId(id)}
+            />
+          )}
           {activeScreen === "userMenu" && (
             <UserMenuScreen onNavigate={handleNavigation} onLogout={() => setLogoutModalVisible(true)} />
           )}

@@ -9,6 +9,11 @@ Atualmente esta configurado para Expo SDK 54.
 2. `npm run start`
 3. Abra no Expo Go, Android Emulator, iOS Simulator ou web.
 
+## Variaveis de ambiente (dev/build)
+
+- `EXPO_PUBLIC_API_BASE_URL`: URL do backend (ex: `http://192.168.x.x:3000`).
+- `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`: chave do Google Maps SDK (Android). Sem ela o mapa pode ficar em branco/cinza no app.
+
 ## Requisitos
 
 - Node.js 20.19.x ou superior compativel com Expo SDK 54.

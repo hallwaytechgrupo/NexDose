@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.15.4:3000";
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
 
 export interface AuthUser {
   id: number;
@@ -103,9 +103,10 @@ export interface UpdateMedicationPayload {
 
 export async function createMedication(
   token: string,
+  dispenserId: number,
   payload: CreateMedicationPayload
 ): Promise<any> {
-  return request<any>("/api/medications", {
+  return request<any>(`/api/dispensers/${dispenserId}/medications`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -114,8 +115,8 @@ export async function createMedication(
   });
 }
 
-export async function getMedications(token: string): Promise<any[]> {
-  return request<any[]>("/api/medications", {
+export async function getMedications(token: string, dispenserId: number): Promise<any[]> {
+  return request<any[]>(`/api/dispensers/${dispenserId}/medications`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -125,10 +126,11 @@ export async function getMedications(token: string): Promise<any[]> {
 
 export async function updateMedication(
   token: string,
+  dispenserId: number,
   id: string,
   payload: UpdateMedicationPayload
 ): Promise<any> {
-  return request<any>(`/api/medications/${id}`, {
+  return request<any>(`/api/dispensers/${dispenserId}/medications/${id}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -139,9 +141,10 @@ export async function updateMedication(
 
 export async function deleteMedication(
   token: string,
+  dispenserId: number,
   id: string
 ): Promise<any> {
-  return request<any>(`/api/medications/${id}`, {
+  return request<any>(`/api/dispensers/${dispenserId}/medications/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -153,10 +156,10 @@ export async function deleteMedication(
 
 
 export interface Caregiver {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  Tel: string | null;
+  can_edit_medications?: boolean;
 }
 
 // --- Funções de Cuidadores Atualizadas e Padronizadas ---
@@ -167,31 +170,27 @@ export interface Caregiver {
  */
 export async function addCaregiver(
     token: string,
-    name: string,
-    email: string,
-    tel: string
+    payload: {
+      dispenserId: number;
+      caregiverEmail: string;
+      canEditMedications?: boolean;
+    }
 ): Promise<Caregiver> {
   return request<Caregiver>("/api/caregivers", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      caregiverEmail: email,
-      name,
-      Tel: tel // Mantendo o 'T' maiúsculo conforme seu estado anterior
-    }),
+    body: JSON.stringify(payload),
   });
 }
 
-export async function getCaregivers(token: string | null): Promise<Caregiver[]> {
-  return request<Caregiver[]>("/api/caregivers", {
+export async function getCaregivers(token: string, dispenserId: number): Promise<Caregiver[]> {
+  return request<Caregiver[]>(`/api/caregivers?dispenserId=${dispenserId}`, {
     method: "GET",
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : undefined,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 
@@ -200,9 +199,10 @@ export async function getCaregivers(token: string | null): Promise<Caregiver[]> 
  */
 export async function removeCaregiver(
     token: string,
-    id: string
+    caregiverId: number,
+    dispenserId: number
 ): Promise<void> {
-  return request<void>(`/api/caregivers/${id}`, {
+  return request<void>(`/api/caregivers/${caregiverId}?dispenserId=${dispenserId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -212,4 +212,58 @@ export async function removeCaregiver(
 
 export function getApiBaseUrl() {
   return API_BASE_URL;
+}
+
+// --- Funções para Dispensers ---
+
+export type Dispenser = {
+  id: number;
+  serial_number: string;
+  name: string | null;
+  status: string | null;
+  last_sync?: string | null;
+  created_at?: string;
+};
+
+export async function getDispensers(token: string): Promise<Dispenser[]> {
+  return request<Dispenser[]>("/api/dispensers", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function claimDispenser(
+    token: string,
+    s: string
+    , s1: string): Promise<Dispenser> {
+
+  let payload: { serialNumber: string; name?: string } = { serialNumber: s };
+  if (s1.trim() !== "") {
+    payload.name = s1.trim();
+  }
+  const res = await request<{ message: string; dispenser: Dispenser }>(
+    "/api/dispensers/claim",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  return res.dispenser;
+}
+
+export async function removeDispenser(
+  token: string,
+  dispenserId: number
+): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/dispensers/${dispenserId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }

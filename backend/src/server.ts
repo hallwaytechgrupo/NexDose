@@ -6,6 +6,7 @@ import cors from 'cors';
 import pool from './db';
 import authRoutes from './routes/authRoutes';
 import medicationRoutes from './routes/medicationRoutes';
+import dispenserMedicationRoutes from './routes/dispenserMedicationRoutes';
 import caregiverRoutes from './routes/caregiverRoutes';
 import dispenserRoutes from './routes/dispenserRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
@@ -42,6 +43,7 @@ app.use('/files', express.static(uploadsDir));
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/medications', medicationRoutes);
+app.use('/api/dispensers/:dispenserId/medications', dispenserMedicationRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/dispensers', dispenserRoutes);
 app.use('/api/farmacias', pharmacyRoutes);
@@ -65,4 +67,3 @@ const startServer = async () => {
 };
 
 startServer();
-

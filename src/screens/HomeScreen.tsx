@@ -105,6 +105,7 @@ export function HomeScreen({
               onPress={() => {
                 if (action.key === "caregiver") onNavigate("caregiver");
                 if (action.key === "pharmacy") onNavigate("pharmacy");
+                if (action.key === "dispenser") onNavigate("dispenser");
               }}
               style={styles.actionCard}
             >
@@ -151,7 +152,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontWeight: "800",
     textAlign: "center",
-    
   },
   ringWrap: {
     alignItems: "center",

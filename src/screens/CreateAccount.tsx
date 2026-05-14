@@ -26,6 +26,7 @@ export function CreateAccountScreen({
   onRegister: (payload: {
     name: string;
     email: string;
+    phone: string;
     password: string;
     role: "responsavel" | "caregiver";
   }) => Promise<void>;
@@ -34,17 +35,19 @@ export function CreateAccountScreen({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"responsavel" | "caregiver">("responsavel");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+    if (!name.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
       setError("Preencha todos os campos.");
       return;
     }
@@ -55,13 +58,14 @@ export function CreateAccountScreen({
     setIsSubmitting(true);
     setError(null);
     try {
-      await onRegister({ name: name.trim(), email: email.trim(), password, role });
+      await onRegister({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Nao foi possivel criar a conta.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
 
   return (
@@ -85,6 +89,7 @@ export function CreateAccountScreen({
             </View>
 
             <SurfaceCard muted>
+
               <View style={styles.contentBlock}>
                 <InputField
                     label="Nome completo"
@@ -110,6 +115,17 @@ export function CreateAccountScreen({
                     blurOnSubmit={false}
                 />
                 <InputField
+                    ref={phoneRef}
+                    label={"Telefone"}
+                    placeholder={"Ex: (11) 91234-5678"}
+                    keyboardType={"phone-pad"}
+                    value={phone}
+                    onChangeText={setPhone}
+                    returnKeyType={"next"}
+                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                    blurOnSubmit={false}
+                />
+                <InputField
                     ref={passwordRef}
                     label="Senha"
                     placeholder="Sua senha"
@@ -120,6 +136,7 @@ export function CreateAccountScreen({
                     onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                     blurOnSubmit={false}
                 />
+
                 <InputField
                     ref={confirmPasswordRef}
                     label="Confirmar senha"
@@ -144,6 +161,7 @@ export function CreateAccountScreen({
                         active={role === "caregiver"}
                         onPress={() => setRole("caregiver")}
                     />
+
                   </View>
                 </View>
               </View>

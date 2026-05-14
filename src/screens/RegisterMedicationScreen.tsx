@@ -17,10 +17,13 @@ import {
 import { colors, radius } from "../theme/tokens";
 import { createMedication, getMedications, updateMedication, deleteMedication } from '../services/api'; 
 
-// MOCK TOKEN - Substitua isso pela lógica real de pegar o token do contexto/estado
-const MOCK_TOKEN = "seu_token_jwt_aqui";
-
-export default function MedicationsScreen() {
+export default function MedicationsScreen({
+  token,
+  dispenserId,
+}: {
+  token: string;
+  dispenserId: number | null;
+}) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [medicationsList, setMedicationsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,12 +41,17 @@ export default function MedicationsScreen() {
   // Carregar os medicamentos quando a tela for montada
   useEffect(() => {
     fetchMedications();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, dispenserId]);
 
   const fetchMedications = async () => {
     try {
       setIsLoading(true);
-      const data = await getMedications(MOCK_TOKEN);
+      if (!dispenserId) {
+        setMedicationsList([]);
+        return;
+      }
+      const data = await getMedications(token, dispenserId);
       
       const formattedData = data.map((med: any) => ({
         id: String(med.id),
@@ -56,9 +64,7 @@ export default function MedicationsScreen() {
       setMedicationsList(formattedData);
     } catch (error) {
       console.error("Erro ao buscar medicamentos:", error);
-      setMedicationsList([
-          { id: 'mock-1', name: 'Dipirona', dosage: '500mg', interval: 8, nextDose: '14:00' }
-      ]);
+      setMedicationsList([]);
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +110,13 @@ export default function MedicationsScreen() {
 
   // Salva a criação ou a edição
   const handleSaveMedication = async () => {
+    if (!dispenserId) {
+      Alert.alert(
+        "Selecione um dispositivo",
+        "Vá em Dispositivos e selecione um dispenser para continuar."
+      );
+      return;
+    }
     if (!medicationName || !dosage) {
       Alert.alert("Erro", "Por favor, preencha o nome e a dosagem do medicamento.");
       return;
@@ -122,12 +135,12 @@ export default function MedicationsScreen() {
       if (editingId) {
         // MODO EDIÇÃO
         console.log("Atualizando backend:", editingId, payload);
-        await updateMedication(MOCK_TOKEN, editingId, payload);
+        await updateMedication(token, dispenserId, editingId, payload);
         Alert.alert("Sucesso", "Medicamento atualizado com sucesso!");
       } else {
         // MODO CRIAÇÃO
         console.log("Enviando para o backend:", payload);
-        await createMedication(MOCK_TOKEN, payload);
+        await createMedication(token, dispenserId, payload);
         Alert.alert("Sucesso", "Medicamento registrado com sucesso!");
       }
 
@@ -145,6 +158,13 @@ export default function MedicationsScreen() {
   // Deleta o medicamento
   const handleDeleteMedication = async () => {
     if(!editingId) return;
+    if (!dispenserId) {
+      Alert.alert(
+        "Selecione um dispositivo",
+        "Vá em Dispositivos e selecione um dispenser para continuar."
+      );
+      return;
+    }
 
     Alert.alert(
       "Confirmar Exclusão",
@@ -157,7 +177,7 @@ export default function MedicationsScreen() {
           onPress: async () => {
             setIsSubmitting(true);
             try {
-              await deleteMedication(MOCK_TOKEN, editingId);
+              await deleteMedication(token, dispenserId, editingId);
               Alert.alert("Sucesso", "Medicamento removido.");
               await fetchMedications();
               setIsModalVisible(false);
