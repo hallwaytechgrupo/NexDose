@@ -12,6 +12,12 @@ services:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c 'cat < /dev/null > /dev/tcp/localhost/3000' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   backend_node_modules:

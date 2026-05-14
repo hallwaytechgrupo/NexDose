@@ -3,3 +3,13 @@ npm-debug.log
 Dockerfile
 dist
 .env
+.env.local
+.env.*.local
+.git
+.gitignore
+.dockerignore
+*.md
+.DS_Store
+.editorconfig
+.vscode
+.idea
