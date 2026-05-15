@@ -3,6 +3,7 @@ import 'dotenv/config';
 export default {
   expo: {
     name: "NexDose",
+    icon: "./assets/ndIcon.png",
     slug: "nexdose-mobile",
     scheme: "nexdose",
     version: "1.0.0",
@@ -14,6 +15,10 @@ export default {
       bundleIdentifier: "com.nexdose.mobile"
     },
     android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/ndIcon.png",
+        backgroundColor: "#FFFFFF"
+      },
       package: "com.nexdose.mobile",
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,

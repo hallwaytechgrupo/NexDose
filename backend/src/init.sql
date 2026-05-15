@@ -57,6 +57,9 @@ id SERIAL PRIMARY KEY,
 dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
 name VARCHAR(255) NOT NULL,
 dosage VARCHAR(100),
+start_date DATE DEFAULT CURRENT_DATE,
+end_date DATE, -- Se for NULL, o remédio é contínuo
+is_continuous BOOLEAN DEFAULT false, -- Opcional: uma flag para facilitar a lógica
 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

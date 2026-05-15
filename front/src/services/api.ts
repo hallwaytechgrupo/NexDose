@@ -217,6 +217,7 @@ export function getApiBaseUrl() {
 // --- Funções para Dispensers ---
 
 export type Dispenser = {
+  can_edit_medications: boolean;
   id: number;
   serial_number: string;
   name: string | null;
