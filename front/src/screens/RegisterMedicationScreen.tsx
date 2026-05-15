@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, FlatList, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator, Switch } from 'react-native';
-import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import {
+  View, Text, Modal, FlatList, Pressable, StyleSheet,
+  ScrollView, Alert, ActivityIndicator, Switch
+} from 'react-native';
+import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   AppScreen,
@@ -10,18 +13,19 @@ import {
   SectionTitle,
   SurfaceCard,
 } from "../components/Primitives";
-import {
-  intervals,
-  medicationTypes,
-} from "../data/mockData";
+import { intervals } from "../data/mockData"; // Certifique-se que este mock existe
 import { colors, radius } from "../theme/tokens";
-import { createMedication, getMedications, updateMedication, deleteMedication } from '../services/api';
+import {
+  createMedication,
+  getMedications,
+  updateMedication,
+  deleteMedication
+} from '../services/api';
 
-// Adicionada a tipagem para canEdit recebida do AppShell
 interface MedicationsScreenProps {
   token: string;
   dispenserId: number | null;
-  canEdit: boolean;
+  canEdit: boolean; // Flag de permissão vinda do AppShell
 }
 
 export default function MedicationsScreen({
@@ -29,15 +33,15 @@ export default function MedicationsScreen({
                                             dispenserId,
                                             canEdit,
                                           }: MedicationsScreenProps) {
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  // --- ESTADOS ---
   const [medicationsList, setMedicationsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // --- ESTADOS DO FORMULÁRIO ---
+  // --- ESTADOS DO FORMULÁRIO COMPLETO ---
   const [editingId, setEditingId] = useState<string | null>(null);
   const [medicationName, setMedicationName] = useState('');
   const [dosage, setDosage] = useState('');
-  const [selectedType, setSelectedType] = useState('capsule');
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [isContinuous, setIsContinuous] = useState(false);
@@ -57,6 +61,7 @@ export default function MedicationsScreen({
         setMedicationsList([]);
         return;
       }
+
       const data = await getMedications(token, dispenserId);
 
       const formattedData = data.map((med: any) => ({
@@ -72,14 +77,17 @@ export default function MedicationsScreen({
       setMedicationsList(formattedData);
     } catch (error) {
       console.error("Erro ao buscar medicamentos:", error);
-      setMedicationsList([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOpenCreateModal = () => {
-    if (!canEdit) return; // Segurança extra no front
+  // --- FUNÇÕES DE AÇÃO ---
+  const handleOpenCreate = () => {
+    if (!canEdit) {
+      Alert.alert("Acesso Restrito", "Você não tem permissão para adicionar medicamentos.");
+      return;
+    }
     setEditingId(null);
     setMedicationName('');
     setDosage('');
@@ -90,33 +98,28 @@ export default function MedicationsScreen({
     setIsModalVisible(true);
   };
 
-  const handleOpenEditModal = (medication: any) => {
-    setEditingId(medication.id);
-    setMedicationName(medication.name);
-    setDosage(medication.dosage);
-    setSelectedInterval(medication.interval);
-    setIsContinuous(medication.isContinuous);
+  const handleOpenEdit = (med: any) => {
+    setEditingId(med.id);
+    setMedicationName(med.name);
+    setDosage(med.dosage);
+    setSelectedInterval(med.interval);
+    setIsContinuous(med.isContinuous);
+    if (med.endDate) setEndDate(new Date(med.endDate));
 
-    if (medication.endDate) {
-      setEndDate(new Date(medication.endDate));
+    // Ajusta o horário da 1ª dose para exibição
+    if (med.nextDose !== '--:--') {
+      const [h, m] = med.nextDose.split(':');
+      const d = new Date();
+      d.setHours(parseInt(h), parseInt(m), 0, 0);
+      setStartDate(d);
     }
-
-    const newDate = new Date();
-    if(medication.nextDose !== '--:--'){
-      const [hours, minutes] = medication.nextDose.split(':');
-      newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-    }
-    setStartDate(newDate);
     setIsModalVisible(true);
   };
 
   const handleSaveMedication = async () => {
-    if (!dispenserId) {
-      Alert.alert("Erro", "Selecione um dispositivo primeiro.");
-      return;
-    }
+    if (!dispenserId) return;
     if (!medicationName || !dosage) {
-      Alert.alert("Erro", "Preencha o nome e a dosagem.");
+      Alert.alert("Erro", "Nome e dosagem são obrigatórios.");
       return;
     }
 
@@ -133,48 +136,33 @@ export default function MedicationsScreen({
 
       if (editingId) {
         await updateMedication(token, dispenserId, editingId, payload);
-        Alert.alert("Sucesso", "Medicamento atualizado!");
       } else {
         await createMedication(token, dispenserId, payload);
-        Alert.alert("Sucesso", "Medicamento registrado!");
       }
-
       await fetchMedications();
       setIsModalVisible(false);
     } catch (error: any) {
-      // Captura a mensagem de erro vinda do seu Back-end (403 Forbidden)
-      const serverMessage = error.response?.data?.error || "Falha ao salvar medicamento no servidor.";
-      Alert.alert("Acesso Negado", serverMessage);
+      Alert.alert("Erro", error.message || "Falha ao salvar.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteMedication = async () => {
+  const handleDelete = async () => {
     if(!editingId || !dispenserId) return;
-
-    Alert.alert("Confirmar Exclusão", "Deseja deletar este medicamento?", [
+    Alert.alert("Excluir", "Deseja remover este medicamento?", [
       { text: "Cancelar", style: "cancel" },
-      {
-        text: "Deletar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteMedication(token, dispenserId, editingId);
-            await fetchMedications();
-            setIsModalVisible(false);
-          } catch (error: any) {
-            const serverMessage = error.response?.data?.error || "Falha ao deletar.";
-            Alert.alert("Erro", serverMessage);
-          }
-        }
-      }
+      { text: "Deletar", style: "destructive", onPress: async () => {
+          await deleteMedication(token, dispenserId, editingId);
+          await fetchMedications();
+          setIsModalVisible(false);
+        }}
     ]);
   };
 
   return (
       <AppScreen useScrollView={false}>
-        <Text style={[styles.pageTitle, { color: colors.primary }]}>Medicamentos</Text>
+        <Text style={styles.pageTitle}>Medicamentos do Dispositivo</Text>
 
         {isLoading ? (
             <View style={styles.centered}>
@@ -184,41 +172,17 @@ export default function MedicationsScreen({
             <FlatList
                 data={medicationsList}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 20 }}
                 renderItem={({ item }) => {
                   const isExpired = item.endDate && new Date(item.endDate) < new Date();
-
                   return (
-                      <SurfaceCard
-                          muted
-                          style={[
-                            styles.medicationCard,
-                            isExpired && { opacity: 0.6, backgroundColor: '#F0F0F0' }
-                          ]}
-                      >
+                      <SurfaceCard muted style={[styles.medCard, isExpired && { opacity: 0.6 }]}>
                         <View style={styles.cardHeader}>
                           <View style={{ flex: 1 }}>
-                            <Text style={[styles.medName, isExpired && { color: colors.textMuted }]}>
-                              {item.name} {item.dosage} {isExpired ? "(Finalizado)" : ""}
-                            </Text>
-
-                            <Text style={styles.medInfo}>Próxima dose: {item.nextDose}</Text>
-
-                            <View style={styles.tagRow}>
-                              <Text style={styles.intervalTag}>{item.interval}h</Text>
-                              {item.isContinuous ? (
-                                  <Text style={styles.continuousTag}>Contínuo</Text>
-                              ) : (
-                                  <Text style={styles.dateTag}>
-                                    Até {item.endDate ? new Date(item.endDate).toLocaleDateString('pt-BR') : '--'}
-                                  </Text>
-                              )}
-                            </View>
+                            <Text style={styles.medName}>{item.name} {item.dosage}</Text>
+                            <Text style={styles.medInfo}>Próxima: {item.nextDose} • {item.interval}h</Text>
                           </View>
-
-                          {/* Só exibe o botão de editar se canEdit for true */}
                           {canEdit && (
-                              <Pressable style={styles.editButton} onPress={() => handleOpenEditModal(item)}>
+                              <Pressable style={styles.editButton} onPress={() => handleOpenEdit(item)}>
                                 <Feather name="edit-2" size={18} color={colors.primary} />
                               </Pressable>
                           )}
@@ -226,25 +190,22 @@ export default function MedicationsScreen({
                       </SurfaceCard>
                   );
                 }}
-                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum medicamento registrado.</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum medicamento no dispenser.</Text>}
             />
         )}
 
-        {/* Só exibe o botão de "Novo" se canEdit for true */}
         {canEdit && (
-            <GradientButton title="Novo Medicamento" onPress={handleOpenCreateModal} />
+            <GradientButton title="Novo Medicamento" onPress={handleOpenCreate} />
         )}
 
+        {/* MODAL COMPLETO DE CADASTRO/EDIÇÃO */}
         <Modal visible={isModalVisible} animationType="slide" presentationStyle="pageSheet">
           <View style={styles.modalContainer}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeaderRow}>
-                <Text style={[styles.modalTitle, { color: colors.primary }]}>
-                  {editingId ? "Editar" : "Novo Medicamento"}
-                </Text>
-                {/* Ícone de lixeira só para quem pode editar */}
+                <Text style={styles.modalTitle}>{editingId ? "Editar" : "Novo Medicamento"}</Text>
                 {editingId && canEdit && (
-                    <Pressable onPress={handleDeleteMedication} style={styles.deleteIconBtn}>
+                    <Pressable onPress={handleDelete} style={styles.deleteIconBtn}>
                       <Feather name="trash-2" size={20} color={colors.error} />
                     </Pressable>
                 )}
@@ -252,73 +213,52 @@ export default function MedicationsScreen({
 
               <SurfaceCard muted>
                 <View style={styles.contentBlock}>
-                  <InputField label="Nome" value={medicationName} onChangeText={setMedicationName} editable={canEdit} />
-                  <InputField label="Dosagem" value={dosage} onChangeText={setDosage} editable={canEdit} />
+                  <InputField label="Nome do Remédio" value={medicationName} onChangeText={setMedicationName} editable={canEdit} />
+                  <InputField label="Dosagem (ex: 500mg)" value={dosage} onChangeText={setDosage} editable={canEdit} />
 
                   <View style={styles.switchRow}>
                     <View style={{ flex: 1 }}>
                       <SectionTitle>Uso contínuo?</SectionTitle>
-                      <Text style={styles.subLabel}>O tratamento não tem data de término</Text>
+                      <Text style={styles.subLabel}>Sem data de término definida</Text>
                     </View>
                     <Switch
                         value={isContinuous}
                         onValueChange={setIsContinuous}
-                        trackColor={{ false: colors.outline, true: colors.primary }}
                         disabled={!canEdit}
+                        trackColor={{ false: colors.outline, true: colors.primary }}
                     />
                   </View>
 
                   {!isContinuous && (
-                      <View style={styles.column}>
+                      <View>
                         <SectionTitle>Data de Término</SectionTitle>
-                        <Pressable
-                            onPress={() => canEdit && setShowEndPicker(true)}
-                            style={[styles.dateSelector, !canEdit && { opacity: 0.5 }]}
-                        >
+                        <Pressable onPress={() => canEdit && setShowEndPicker(true)} style={styles.selectorField}>
                           <Feather name="calendar" size={18} color={colors.primary} />
-                          <Text style={styles.dateText}>{endDate.toLocaleDateString('pt-BR')}</Text>
+                          <Text style={styles.selectorText}>{endDate.toLocaleDateString('pt-BR')}</Text>
                         </Pressable>
                         {showEndPicker && (
-                            <DateTimePicker
-                                value={endDate}
-                                mode="date"
-                                onChange={(e, d) => { setShowEndPicker(false); if(d) setEndDate(d); }}
-                            />
+                            <DateTimePicker value={endDate} mode="date" onChange={(e, d) => { setShowEndPicker(false); if(d) setEndDate(d); }} />
                         )}
                       </View>
                   )}
 
-                  <View style={styles.twoCols}>
-                    <View style={styles.column}>
-                      <SectionTitle>Horário da 1ª dose</SectionTitle>
-                      <Pressable
-                          onPress={() => canEdit && setShowPicker(true)}
-                          style={[styles.timePicker, !canEdit && { opacity: 0.5 }]}
-                      >
-                        <Text style={styles.timePickerMain}>
-                          {startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </Text>
+                  <View style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                      <SectionTitle>Hora da 1ª Dose</SectionTitle>
+                      <Pressable onPress={() => canEdit && setShowPicker(true)} style={styles.selectorField}>
+                        <Feather name="clock" size={18} color={colors.primary} />
+                        <Text style={styles.selectorText}>{startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                       </Pressable>
                       {showPicker && (
-                          <DateTimePicker
-                              value={startDate}
-                              mode="time"
-                              is24Hour={true}
-                              onChange={(e, d) => { setShowPicker(false); if(d) setStartDate(d); }}
-                          />
+                          <DateTimePicker value={startDate} mode="time" is24Hour={true} onChange={(e, d) => { setShowPicker(false); if(d) setStartDate(d); }} />
                       )}
                     </View>
 
-                    <View style={styles.column}>
-                      <SectionTitle>Intervalo</SectionTitle>
-                      <View style={styles.chipsWrap}>
-                        {intervals.map((i) => (
-                            <Chip
-                                key={i}
-                                label={`${i}h`}
-                                active={i === selectedInterval}
-                                onPress={() => canEdit && setSelectedInterval(i)}
-                            />
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                      <SectionTitle>Intervalo (h)</SectionTitle>
+                      <View style={styles.chipsRow}>
+                        {[4, 6, 8, 12].map(h => (
+                            <Chip key={h} label={`${h}h`} active={selectedInterval === h} onPress={() => canEdit && setSelectedInterval(h)} />
                         ))}
                       </View>
                     </View>
@@ -327,11 +267,8 @@ export default function MedicationsScreen({
               </SurfaceCard>
 
               <View style={styles.modalButtons}>
-                {/* Só mostra o botão de Salvar se canEdit for true */}
-                {canEdit && (
-                    <GradientButton title={isSubmitting ? "Salvando..." : "Salvar"} onPress={handleSaveMedication} />
-                )}
-                <GradientButton title="Cancelar" onPress={() => setIsModalVisible(false)} variant="danger" />
+                {canEdit && <GradientButton title={isSubmitting ? "Salvando..." : "Salvar"} onPress={handleSaveMedication} />}
+                <GradientButton title="Cancelar" variant="danger" onPress={() => setIsModalVisible(false)} />
               </View>
             </ScrollView>
           </View>
@@ -341,31 +278,28 @@ export default function MedicationsScreen({
 }
 
 const styles = StyleSheet.create({
+  pageTitle: { fontSize: 24, fontWeight: 'bold', color: colors.primary, marginBottom: 20 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 20 },
-  medicationCard: { padding: 16, marginBottom: 12 },
+  medCard: { padding: 16, marginBottom: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
-  medName: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
-  medInfo: { fontSize: 14, color: colors.textMuted, marginBottom: 8 },
-  tagRow: { flexDirection: 'row', gap: 8 },
-  intervalTag: { backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
-  continuousTag: { backgroundColor: '#E3F2FD', color: '#1976D2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
-  dateTag: { backgroundColor: '#F5F5F5', color: colors.textMuted, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, fontSize: 12 },
-  editButton: { padding: 10, backgroundColor: colors.surfaceLowest, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outline },
-  emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 40 },
+  medName: { fontSize: 18, fontWeight: 'bold', color: colors.text },
+  medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
+  tagRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  intervalTag: { backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
+  continuousTag: { backgroundColor: '#E3F2FD', color: '#1976D2', paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
+  dateTag: { backgroundColor: '#F5F5F5', color: colors.textMuted, paddingHorizontal: 8, borderRadius: 4, fontSize: 12 },
+  editButton: { padding: 8, borderRadius: radius.full, backgroundColor: colors.surfaceLowest, borderWidth: 1, borderColor: colors.outline },
+  emptyText: { textAlign: 'center', marginTop: 40, color: colors.textMuted },
   modalContainer: { flex: 1, padding: 20, backgroundColor: colors.background },
   modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold' },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.primary },
   deleteIconBtn: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: radius.full },
-  contentBlock: { gap: 20 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
+  contentBlock: { gap: 16 },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   subLabel: { fontSize: 12, color: colors.textMuted },
-  dateSelector: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceLowest, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outline },
-  dateText: { fontSize: 16, color: colors.text, fontWeight: '600' },
-  timePicker: { backgroundColor: colors.surfaceLowest, padding: 15, borderRadius: radius.md, alignItems: 'center', borderWidth: 1, borderColor: colors.outline },
-  timePickerMain: { fontSize: 32, fontWeight: 'bold', color: colors.primary },
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  modalButtons: { marginTop: 30, gap: 12, paddingBottom: 20 },
-  twoCols: { gap: 20 },
-  column: { flex: 1 }
+  selectorField: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceLowest, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outline },
+  selectorText: { fontSize: 16, color: colors.text, fontWeight: '600' },
+  row: { flexDirection: 'row' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  modalButtons: { marginTop: 30, gap: 10, paddingBottom: 20 }
 });

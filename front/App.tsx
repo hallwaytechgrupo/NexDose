@@ -6,7 +6,6 @@ import { CreateAccountScreen } from "./src/screens/CreateAccount";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import {
   AuthUser,
-  UpdateProfileResponse,
   login,
   register,
   updateProfile,
@@ -21,21 +20,37 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
 
   const handleLogin = async (email: string, password: string) => {
-    const response = await login({ email, password });
-    setAuthUser(response.user);
-    setToken(response.token);
-    await SecureStore.setItemAsync("userToken", response.token);
-    setScreen("app");
+    try {
+      const response = await login({ email, password });
+      setAuthUser(response.user);
+      setToken(response.token);
+
+      // Salva token e role para persistência
+      await SecureStore.setItemAsync("userToken", response.token);
+      if (response.user.role) {
+        await SecureStore.setItemAsync("userRole", response.user.role);
+      }
+
+      setScreen("app");
+    } catch (error) {
+      throw error;
+    }
   };
 
+  // ✅ CORREÇÃO AQUI: Removida a role e adicionado o phone
   const handleRegister = async (payload: {
     name: string;
     email: string;
+    phone: string;
     password: string;
-    role: "responsavel" | "caregiver";
   }) => {
-    await register(payload);
-    await handleLogin(payload.email, payload.password);
+    try {
+      await register(payload);
+      // Após registrar, faz login automático
+      await handleLogin(payload.email, payload.password);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleProfileUpdate = async (payload: {
@@ -44,7 +59,7 @@ export default function App() {
     password?: string;
   }) => {
     if (!token) {
-      throw new Error("Sessao expirada. Faca login novamente.");
+      throw new Error("Sessão expirada. Faça login novamente.");
     }
 
     const response = await updateProfile(token, payload);
@@ -56,6 +71,7 @@ export default function App() {
     setAuthUser(null);
     setToken(null);
     SecureStore.deleteItemAsync("userToken").catch(() => null);
+    SecureStore.deleteItemAsync("userRole").catch(() => null);
     setScreen("login");
   };
 
@@ -63,26 +79,26 @@ export default function App() {
     switch (screen) {
       case "login":
         return (
-          <LoginScreen
-            onLogin={handleLogin}
-            onNavigateToSignUp={() => setScreen("createAccount")}
-          />
+            <LoginScreen
+                onLogin={handleLogin}
+                onNavigateToSignUp={() => setScreen("createAccount")}
+            />
         );
       case "createAccount":
         return (
-          <CreateAccountScreen
-            onRegister={handleRegister}
-            onNavigateToLogin={() => setScreen("login")}
-          />
+            <CreateAccountScreen
+                onRegister={handleRegister} // Agora passa a função correta
+                onNavigateToLogin={() => setScreen("login")}
+            />
         );
       case "app":
         return authUser && token ? (
-          <AppShell
-            onLogout={handleLogout}
-            onProfileUpdate={handleProfileUpdate}
-            token={token}
-            user={authUser}
-          />
+            <AppShell
+                onLogout={handleLogout}
+                onProfileUpdate={handleProfileUpdate}
+                token={token}
+                user={authUser}
+            />
         ) : null;
       default:
         return null;
@@ -90,9 +106,9 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      {renderScreen()}
-    </SafeAreaProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        {renderScreen()}
+      </SafeAreaProvider>
   );
 }

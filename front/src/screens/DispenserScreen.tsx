@@ -167,9 +167,7 @@ export function DispenserScreen({
                             <Text style={[styles.deviceMeta, active ? { color: "rgba(255,255,255,0.85)" } : undefined]}>
                               Status: {d.status || "offline"}
                             </Text>
-                            {!d.can_edit_medications && (
-                                <Text style={styles.readonlyTag}>Apenas Leitura</Text>
-                            )}
+
                           </View>
                         </View>
                         <Pressable onPress={() => handleRemove(d.id)} style={styles.removeBtn}>

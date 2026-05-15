@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert,
+  ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -18,7 +19,7 @@ import { Feather } from "@expo/vector-icons";
 
 import {
   addCaregiver as apiAddCaregiver,
-  getCaregivers as getCaregivers,
+  getCaregivers,
   removeCaregiver as apiRemoveCaregiver,
 } from "../services/api";
 
@@ -30,28 +31,35 @@ export interface Caregiver {
 }
 
 export function CaregiverScreen({
-  token,
-  dispenserId,
-}: {
+                                  token,
+                                  dispenserId,
+                                  isOwner, // ✅ Recebe se o usuário logado é o dono
+                                }: {
   token: string;
   dispenserId: number | null;
+  isOwner: boolean;
 }) {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Carrega os dados (Correto)
   useEffect(() => {
     async function loadData() {
       try {
+        setIsLoading(true);
         if (!dispenserId) {
           setCaregivers([]);
           return;
         }
         const data = await getCaregivers(token, dispenserId);
         setCaregivers(data);
-      } catch (error) {
-        console.error("Falha ao carregar cuidadores:", error);
+      } catch (error: any) {
+        // Se o backend ainda der 403, tratamos para não assustar o usuário
+        if (error.message?.includes('403')) {
+          setCaregivers([]);
+        } else {
+          console.error("Falha ao carregar cuidadores:", error);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -59,20 +67,25 @@ export function CaregiverScreen({
     loadData();
   }, [token, dispenserId]);
 
-  // 2. Funções de Manipulação (Corretas)
-  const handleAddCaregiver = async (email: string, canEditMedications: boolean) => {
-    if (!dispenserId) {
-      Alert.alert("Selecione um dispositivo", "Vá em Dispositivos e selecione um dispenser para continuar.");
-      return;
-    }
+  const handleAddCaregiver = async (email: string, canEdit: boolean) => {
+    if (!isOwner) return; // Trava de segurança no front
 
     try {
-      const newCaregiver = await apiAddCaregiver(token, {
-        dispenserId,
-        caregiverEmail: email,
-        canEditMedications,
+      if (!dispenserId) return;
+
+      const newCaregiver = await apiAddCaregiver(
+          token,
+          dispenserId,
+          email,
+          canEdit
+      );
+
+      setCaregivers((prev) => {
+        const exists = prev.find(c => c.id === newCaregiver.id);
+        if (exists) return prev;
+        return [...prev, newCaregiver];
       });
-      setCaregivers((prev) => [...prev, newCaregiver]);
+
       setIsAdding(false);
       Alert.alert("Sucesso", "Cuidador vinculado!");
     } catch (error: any) {
@@ -81,36 +94,33 @@ export function CaregiverScreen({
   };
 
   const handleRemoveCaregiver = async (id: number) => {
-    if (!dispenserId) {
-      Alert.alert("Selecione um dispositivo", "Vá em Dispositivos e selecione um dispenser para continuar.");
-      return;
-    }
+    if (!isOwner || !dispenserId) return;
 
-    try {
-      await apiRemoveCaregiver(token, id, dispenserId);
-      setCaregivers((prev) => prev.filter((c) => c.id !== id));
-      Alert.alert("Sucesso", "Cuidador removido.");
-    } catch (error) {
-      Alert.alert("Erro", "Não foi possível remover.");
-    }
+    Alert.alert("Remover", "Deseja desvincular este cuidador?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Remover", style: "destructive", onPress: async () => {
+          try {
+            await apiRemoveCaregiver(token, id, dispenserId);
+            setCaregivers((prev) => prev.filter((c) => c.id !== id));
+          } catch (error) {
+            Alert.alert("Erro", "Não foi possível remover.");
+          }
+        }}
+    ]);
   };
 
-  // --- LÓGICA DE RENDERIZAÇÃO (DENTRO DA FUNÇÃO) ---
-
-  // Primeiro: Verificamos se está carregando
   if (isLoading) {
     return (
         <AppScreen useScrollView={false}>
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando cuidadores...</Text>
+            <Text style={styles.loadingText}>Carregando lista...</Text>
           </View>
         </AppScreen>
     );
   }
 
-  // Segundo: Verificamos se o usuário clicou em "Adicionar"
-  if (isAdding) {
+  if (isAdding && isOwner) {
     return (
         <AddCaregiverForm
             onAdd={handleAddCaregiver}
@@ -121,227 +131,153 @@ export function CaregiverScreen({
 
   if (!dispenserId) {
     return (
-      <AppScreen useScrollView={false}>
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
+        <AppScreen useScrollView={false}>
+          <View style={styles.emptyContainer}>
             <Feather name="package" size={48} color={colors.primary} />
+            <Text style={styles.pageTitle}>Dispositivo não selecionado</Text>
           </View>
-          <Text style={styles.pageTitle}>Selecione um dispositivo</Text>
-          <Text style={styles.pageSubtitle}>
-            Vá em Dispositivos e escolha um dispenser para gerenciar cuidadores.
-          </Text>
-        </View>
-      </AppScreen>
+        </AppScreen>
     );
   }
 
-  // Terceiro: Se a lista estiver vazia
   if (caregivers.length === 0) {
-    return <EmptyState onAdd={() => setIsAdding(true)} />;
+    return <EmptyState onAdd={() => setIsAdding(true)} isOwner={isOwner} />;
   }
 
-  // Quarto: Renderiza a lista normal
   return (
       <CaregiverList
           caregivers={caregivers}
+          isOwner={isOwner}
           onAdd={() => setIsAdding(true)}
           onRemove={handleRemoveCaregiver}
       />
   );
 }
 
-// --- Componentes de UI (sem alterações na lógica) ---
+// --- COMPONENTES AUXILIARES ---
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, isOwner }: { onAdd: () => void, isOwner: boolean }) {
   return (
-    <AppScreen useScrollView={false}>
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIcon}>
-          <Feather name="users" size={48} color={colors.primary} />
+      <AppScreen useScrollView={false}>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <Feather name="users" size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.pageTitle}>Nenhum cuidador</Text>
+          <Text style={styles.pageSubtitle}>
+            {isOwner
+                ? "Você ainda não convidou ninguém para este dispositivo."
+                : "Não há outros cuidadores vinculados a este dispositivo."}
+          </Text>
+          {isOwner && (
+              <View style={{ marginTop: 24, width: "100%" }}>
+                <GradientButton title="Adicionar Cuidador" onPress={onAdd} />
+              </View>
+          )}
         </View>
-        <Text style={styles.pageTitle}>Nenhum cuidador adicionado</Text>
-        <Text style={styles.pageSubtitle}>
-          Compartilhe o acompanhamento com um familiar ou amigo de confiança.
-        </Text>
-        <View style={{ marginTop: 24, width: "100%" }}>
-          <GradientButton title="Adicionar Cuidador" onPress={onAdd} />
-        </View>
-      </View>
-    </AppScreen>
+      </AppScreen>
   );
 }
 
 function CaregiverList({
-  caregivers,
-  onAdd,
-  onRemove,
-}: {
+                         caregivers,
+                         isOwner,
+                         onAdd,
+                         onRemove,
+                       }: {
   caregivers: Caregiver[];
+  isOwner: boolean;
   onAdd: () => void;
   onRemove: (id: number) => void;
 }) {
   return (
-    <AppScreen>
-      <View style={styles.headerCopy}>
-        <Text style={styles.pageTitle}>Cuidadores</Text>
-        <Text style={styles.pageSubtitle}>
-          Pessoas que podem acompanhar seu tratamento.
-        </Text>
-      </View>
+      <AppScreen>
+        <View style={styles.headerCopy}>
+          <Text style={styles.pageTitle}>Cuidadores</Text>
+          <Text style={styles.pageSubtitle}>Pessoas que cuidam deste dispositivo.</Text>
+        </View>
 
-      <View style={styles.listContainer}>
-        {caregivers.map((caregiver) => (
-          <SurfaceCard key={caregiver.id}>
-            <View style={styles.caregiverItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.caregiverName}>{caregiver.name}</Text>
-                <Text style={styles.caregiverEmail}>{caregiver.email}</Text>
-                <Text style={styles.caregiverTel}>
-                  {caregiver.can_edit_medications ? "Pode editar medicamentos" : "Somente leitura"}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => onRemove(caregiver.id)}
-                style={styles.removeButton}
-              >
-                <Feather name="x" size={20} color={colors.textMuted} />
-              </Pressable>
+        <View style={styles.listContainer}>
+          {caregivers.map((caregiver) => (
+              <SurfaceCard key={caregiver.id}>
+                <View style={styles.caregiverItem}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.caregiverName}>{caregiver.name}</Text>
+                    <Text style={styles.caregiverEmail}>{caregiver.email}</Text>
+                    <Text style={styles.caregiverPermission}>
+                      {caregiver.can_edit_medications ? "Pode editar" : "Somente leitura"}
+                    </Text>
+                  </View>
+
+                  {/* ✅ REMOVER SÓ APARECE PARA O DONO */}
+                  {isOwner && (
+                      <Pressable onPress={() => onRemove(caregiver.id)} style={styles.removeButton}>
+                        <Feather name="trash-2" size={18} color={colors.error} />
+                      </Pressable>
+                  )}
+                </View>
+              </SurfaceCard>
+          ))}
+        </View>
+
+        {/* ✅ BOTÃO ADICIONAR SÓ APARECE PARA O DONO */}
+        {isOwner ? (
+            <GradientButton title="Adicionar Novo Cuidador" onPress={onAdd} />
+        ) : (
+            <View style={styles.readOnlyNotice}>
+              <Feather name="lock" size={14} color={colors.textMuted} />
+              <Text style={styles.readOnlyText}>Apenas o responsável pode gerenciar acessos.</Text>
             </View>
-          </SurfaceCard>
-        ))}
-      </View>
-
-      <GradientButton title="Adicionar Novo Cuidador" onPress={onAdd} />
-    </AppScreen>
+        )}
+      </AppScreen>
   );
 }
 
-function AddCaregiverForm({
-  onAdd,
-  onCancel,
-}: {
-  onAdd: (email: string, canEditMedications: boolean) => void;
-  onCancel: () => void;
-}) {
+function AddCaregiverForm({ onAdd, onCancel }: { onAdd: (email: string, canEdit: boolean) => void; onCancel: () => void; }) {
   const [email, setEmail] = useState("");
-  const [canEditMedications, setCanEditMedications] = useState(false);
-
-  const handleAdd = () => {
-    if (email.trim()) {
-      onAdd(email.trim(), canEditMedications);
-    }
-  };
+  const [canEdit, setCanEdit] = useState(false);
 
   return (
-    <AppScreen>
-      <View style={styles.headerCopy}>
-        <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
-        <Text style={styles.pageSubtitle}>
-          Preencha os dados abaixo para convidar.
-        </Text>
-      </View>
-
-      <SurfaceCard>
-        <View style={styles.form}>
-          <InputField
-            label="E-mail"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="done"
-            onSubmitEditing={handleAdd}
-          />
-          <ToggleRow
-            icon="edit-3"
-            title="Pode editar medicamentos"
-            subtitle="Permite criar/alterar/remover medicamentos deste dispositivo."
-            value={canEditMedications}
-            onValueChange={setCanEditMedications}
-          />
+      <AppScreen>
+        <View style={styles.headerCopy}>
+          <Text style={styles.pageTitle}>Adicionar Cuidador</Text>
         </View>
-      </SurfaceCard>
-
-      <View style={styles.formActions}>
-        <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
-        <GradientButton title="Salvar Cuidador" onPress={handleAdd} />
-      </View>
-    </AppScreen>
+        <SurfaceCard>
+          <View style={styles.form}>
+            <InputField label="E-mail do Cuidador" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <ToggleRow
+                icon="edit-3"
+                title="Permitir edição"
+                subtitle="Pode alterar nomes e horários de remédios"
+                value={canEdit}
+                onValueChange={setCanEdit}
+            />
+          </View>
+        </SurfaceCard>
+        <View style={styles.formActions}>
+          <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
+          <GradientButton title="Confirmar Vínculo" onPress={() => onAdd(email, canEdit)} />
+        </View>
+      </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: colors.textMuted,
-  },
-  headerCopy: {
-    gap: 8,
-    marginBottom: 24,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  pageSubtitle: {
-    fontSize: 16,
-    color: colors.textMuted,
-    lineHeight: 24,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    paddingHorizontal: 20,
-  },
-  emptyIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  listContainer: {
-    gap: 16,
-    marginBottom: 24,
-  },
-  caregiverItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  caregiverName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  caregiverEmail: {
-    fontSize: 14,
-    color: colors.textMuted,
-  },
-  caregiverTel: {
-    fontSize: 14,
-    color: colors.textMuted,
-  },
-  removeButton: {
-    padding: 8,
-  },
-  form: {
-    gap: 20,
-  },
-  formActions: {
-    marginTop: 24,
-    gap: 12,
-  },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16 },
+  loadingText: { fontSize: 16, color: colors.textMuted },
+  headerCopy: { gap: 8, marginBottom: 24 },
+  pageTitle: { fontSize: 28, fontWeight: "bold", color: colors.text },
+  pageSubtitle: { fontSize: 16, color: colors.textMuted, lineHeight: 24 },
+  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 20 },
+  emptyIcon: { width: 90, height: 90, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: "center", justifyContent: "center" },
+  listContainer: { gap: 16, marginBottom: 24 },
+  caregiverItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  caregiverName: { fontSize: 16, fontWeight: "bold", color: colors.text },
+  caregiverEmail: { fontSize: 14, color: colors.textMuted },
+  caregiverPermission: { fontSize: 12, color: colors.primary, marginTop: 4, fontWeight: '600' },
+  removeButton: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: radius.full },
+  form: { gap: 20 },
+  formActions: { marginTop: 24, gap: 12 },
+  readOnlyNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, padding: 16, backgroundColor: colors.surfaceLowest, borderRadius: radius.md },
+  readOnlyText: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' }
 });

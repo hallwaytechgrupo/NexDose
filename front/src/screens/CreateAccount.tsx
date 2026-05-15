@@ -58,7 +58,7 @@ export function CreateAccountScreen({
     setIsSubmitting(true);
     setError(null);
     try {
-      await onRegister({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role });
+      await onRegister({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role});
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Nao foi possivel criar a conta.");
     } finally {
@@ -83,6 +83,7 @@ export function CreateAccountScreen({
           >
             <View style={styles.headerCopy}>
               <Text style={styles.pageTitle}>Criar conta</Text>
+
               <Text style={styles.pageSubtitle}>
                 Bem-vindo ao NexDose! Vamos comecar criando sua conta.
               </Text>
@@ -148,23 +149,9 @@ export function CreateAccountScreen({
                     onSubmitEditing={handleSubmit} // Teclar OK no teclado já cria a conta
                 />
 
-                <View style={styles.roleSection}>
-                  <Text style={styles.roleLabel}>Perfil</Text>
-                  <View style={styles.roleOptions}>
-                    <Chip
-                        label="Responsavel"
-                        active={role === "responsavel"}
-                        onPress={() => setRole("responsavel")}
-                    />
-                    <Chip
-                        label="Cuidador"
-                        active={role === "caregiver"}
-                        onPress={() => setRole("caregiver")}
-                    />
 
-                  </View>
                 </View>
-              </View>
+
             </SurfaceCard>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}

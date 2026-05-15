@@ -25,7 +25,8 @@ import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
 import { AuthUser, UpdateProfileResponse, getDispensers } from "./services/api";
 
-type AppScreen = TabKey | "userMenu" | "editProfile" | "loading";
+// ✅ 1. Tipo AppScreen atualizado para suportar todas as rotas
+type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser";
 
 export function AppShell({
                            onLogout,
@@ -50,6 +51,12 @@ export function AppShell({
   const [selectedDispenserId, setSelectedDispenserId] = useState<number | null>(null);
   const [canEditMedications, setCanEditMedications] = useState<boolean>(false);
 
+  // Helper para verificar se é dono (Blindado contra nomes diferentes e maiúsculas)
+  const checkIfOwner = () => {
+    const role = user.role?.toLowerCase();
+    return role === 'sponsor' || role === 'responsavel';
+  };
+
   // Lógica de Inicialização Inteligente
   useEffect(() => {
     async function initializeApp() {
@@ -60,11 +67,11 @@ export function AppShell({
           const device = dispensers[0];
           setSelectedDispenserId(device.id);
 
-          // Se for o dono (sponsor), sempre pode editar.
-          // Se for cuidador, verificamos a flag que o backend retorna.
-          const hasPermission = user.role === 'responsavel' || device.can_edit_medications;
-          setCanEditMedications(hasPermission);
+          // ✅ Lógica Corrigida: Verifica as duas opções de role
+          const isOwner = checkIfOwner();
+          const hasPermission = isOwner || !!device.can_edit_medications;
 
+          setCanEditMedications(hasPermission);
           setActiveScreen("home");
         } else {
           setActiveScreen("dispenser");
@@ -103,7 +110,7 @@ export function AppShell({
     return () => backHandler.remove();
   }, [activeScreen]);
 
-  const handleNavigation = (screen: any) => {
+  const handleNavigation = (screen: AppScreen) => {
     setActiveScreen(screen);
   };
 
@@ -119,9 +126,10 @@ export function AppShell({
   return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={styles.container}>
+          {/* Barra superior ativa nas telas de navegação principais */}
           {["home", "medications", "history", "settings", "caregiver", "pharmacy", "dispenser"].includes(activeScreen) && (
               <TopBar
-                  activeTab={activeScreen as TabKey}
+                  activeTab={activeScreen as any}
                   onBackPress={() => handleNavigation("userMenu")}
                   onNotificationPress={() => setNotificationModalVisible(true)}
                   onAvatarPress={() => handleNavigation("userMenu")}
@@ -136,15 +144,22 @@ export function AppShell({
                 <MedicationsScreen
                     token={token}
                     dispenserId={selectedDispenserId}
-                    canEdit={canEditMedications} // Passando a permissão para a tela
+                    canEdit={canEditMedications}
                 />
             )}
 
             {activeScreen === "history" && <HistoryScreen />}
             {activeScreen === "settings" && <SettingsScreen />}
+
+            {/* ✅ Corrigido: Agora passa a prop 'isOwner' corretamente */}
             {activeScreen === "caregiver" && (
-                <CaregiverScreen token={token} dispenserId={selectedDispenserId} />
+                <CaregiverScreen
+                    token={token}
+                    dispenserId={selectedDispenserId}
+                    isOwner={checkIfOwner()}
+                />
             )}
+
             {activeScreen === "pharmacy" && <PharmacyScreen />}
 
             {activeScreen === "dispenser" && (
@@ -153,8 +168,9 @@ export function AppShell({
                     selectedDispenserId={selectedDispenserId}
                     onSelectDispenser={(id, canEdit) => {
                       setSelectedDispenserId(id);
-                      // Atualiza permissão: Dono sempre pode, cuidador depende da flag
-                      setCanEditMedications(user.role === 'responsavel' || canEdit);
+                      // ✅ Lógica Corrigida: Verifica as duas opções ao selecionar
+                      const isOwner = checkIfOwner();
+                      setCanEditMedications(isOwner || canEdit);
                       setActiveScreen("home");
                     }}
                 />
@@ -174,7 +190,7 @@ export function AppShell({
           </View>
 
           {["home", "medications", "history"].includes(activeScreen) && (
-              <BottomTabs activeTab={activeScreen as TabKey} onChange={handleNavigation} />
+              <BottomTabs activeTab={activeScreen as any} onChange={handleNavigation} />
           )}
         </View>
 
@@ -196,7 +212,9 @@ export function AppShell({
 
 function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, user }: any) {
   const isSettings = activeTab === "settings";
-  const roleLabel = user.role === "responsavel" ? "Responsável" : "Cuidador";
+  // ✅ Lógica Corrigida aqui também para o selo da TopBar
+  const isOwner = user.role?.toLowerCase() === 'sponsor' || user.role?.toLowerCase() === 'responsavel';
+  const roleLabel = isOwner ? "Responsável" : "Cuidador";
 
   return (
       <View style={styles.topBar}>
@@ -208,7 +226,7 @@ function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, us
             <Text style={styles.topTitle}>{isSettings ? "Configurações" : `Olá, ${user.name}!`}</Text>
             {!isSettings && (
                 <View style={styles.statusRow}>
-                  <Text style={styles.statusPill}>{roleLabel}</Text>
+                  <Text style={styles.statusPill}>{}</Text>
                   <Feather name="wifi" size={12} color={colors.secondary} />
                 </View>
             )}
@@ -224,9 +242,9 @@ function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, us
 }
 
 function BottomTabs({ activeTab, onChange }: any) {
-  const items: Array<{ key: TabKey; label: string; icon: any }> = [
+  const items: Array<{ key: string; label: string; icon: any }> = [
     { key: "home", label: "Início", icon: "home" },
-    { key: "medications", label: "Medicamentos", icon: "plus-square" },
+    { key: "medications", label: "Remédios", icon: "plus-square" },
     { key: "history", label: "Histórico", icon: "archive" },
   ];
 
@@ -235,7 +253,7 @@ function BottomTabs({ activeTab, onChange }: any) {
         {items.map((item) => {
           const active = item.key === activeTab;
           return (
-              <Pressable key={item.key} onPress={() => onChange(item.key)}>
+              <Pressable key={item.key} onPress={() => onChange(item.key as any)}>
                 {active ? (
                     <LinearGradient colors={[colors.primary, colors.primaryBright]} style={styles.activeTab}>
                       <Feather name={item.icon} size={24} color="white" />
@@ -254,6 +272,7 @@ function BottomTabs({ activeTab, onChange }: any) {
   );
 }
 
+// ... Modais de Notificação e Logout mantidos ...
 function NotificationModal({ visible, onClose }: any) {
   return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -299,11 +318,11 @@ const styles = StyleSheet.create({
   profileBlock: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 42, height: 42, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: "center", justifyContent: "center" },
   profileCopy: { gap: 4 },
-  topTitle: { color: colors.text, fontSize: 20, fontWeight: "800" },
+  topTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusPill: { backgroundColor: "rgba(111,251,133,0.32)", color: colors.secondary, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 2, fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
   topActions: { flexDirection: "row", gap: 12 },
-  bottomTabs: { position: "absolute", left: 16, right: 16, bottom: 16, flexDirection: "row", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.92)", borderRadius: radius.lg, padding: 8 },
+  bottomTabs: { position: "absolute", left: 16, right: 16, bottom: 16, flexDirection: "row", justifyContent: "space-around", backgroundColor: "rgba(255,255,255,0.92)", borderRadius: radius.lg, padding: 8 },
   idleTab: { borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", justifyContent: "center", gap: 4, minWidth: 76 },
   activeTab: { borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", justifyContent: "center", gap: 4, minWidth: 76 },
   tabLabel: { fontSize: 12, fontWeight: "600", color: colors.text },
