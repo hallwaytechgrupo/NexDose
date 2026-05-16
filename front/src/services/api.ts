@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.96.65:3000";
+    process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
 
 // --- INTERFACES ---
 
@@ -44,7 +44,8 @@ export type Dispenser = {
   last_sync?: string | null;
   created_at?: string;
   is_owner?: boolean;
-  can_edit_medications?: boolean; // ✅ ADICIONE ESTA LINHA
+  sponsor_id: number;
+  can_edit_medications?: boolean;
 };
 
 // --- HELPER DE REQUISIÇÃO ---

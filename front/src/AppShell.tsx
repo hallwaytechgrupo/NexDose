@@ -25,7 +25,6 @@ import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
 import { AuthUser, UpdateProfileResponse, getDispensers } from "./services/api";
 
-// ✅ 1. Tipo AppScreen atualizado para suportar todas as rotas
 type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser";
 
 export function AppShell({
@@ -47,28 +46,29 @@ export function AppShell({
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
-  // Estados para o dispositivo selecionado e permissão
+  // Estados principais
+  const [dispensersList, setDispensersList] = useState<any[]>([]);
   const [selectedDispenserId, setSelectedDispenserId] = useState<number | null>(null);
   const [canEditMedications, setCanEditMedications] = useState<boolean>(false);
 
-  // Helper para verificar se é dono (Blindado contra nomes diferentes e maiúsculas)
-  const checkIfOwner = () => {
-    const role = user.role?.toLowerCase();
-    return role === 'sponsor' || role === 'responsavel';
-  };
+  // ✅ CORREÇÃO 1: Forçando Number() para evitar que string vs number quebre a lógica de dono
+  const currentDispenser = dispensersList.find(d => Number(d.id) === Number(selectedDispenserId));
+  const isOwnerOfCurrentDevice = currentDispenser && Number(currentDispenser.sponsor_id) === Number(user.id);
+  const dispenserName = currentDispenser?.name || "Sem Dispositivo";
 
   // Lógica de Inicialização Inteligente
   useEffect(() => {
     async function initializeApp() {
       try {
         const dispensers = await getDispensers(token);
+        setDispensersList(dispensers);
 
         if (dispensers && dispensers.length === 1) {
           const device = dispensers[0];
           setSelectedDispenserId(device.id);
 
-          // ✅ Lógica Corrigida: Verifica as duas opções de role
-          const isOwner = checkIfOwner();
+          // ✅ CORREÇÃO 2: Forçando Number() na inicialização do app
+          const isOwner = Number(device.sponsor_id) === Number(user.id);
           const hasPermission = isOwner || !!device.can_edit_medications;
 
           setCanEditMedications(hasPermission);
@@ -110,9 +110,11 @@ export function AppShell({
     return () => backHandler.remove();
   }, [activeScreen]);
 
-  const handleNavigation = (screen: AppScreen) => {
+  const handleNavigation = (screen: any) => {
     setActiveScreen(screen);
   };
+
+  const hasTabs = ["home", "medications", "history"].includes(activeScreen);
 
   if (activeScreen === "loading") {
     return (
@@ -126,7 +128,6 @@ export function AppShell({
   return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={styles.container}>
-          {/* Barra superior ativa nas telas de navegação principais */}
           {["home", "medications", "history", "settings", "caregiver", "pharmacy", "dispenser"].includes(activeScreen) && (
               <TopBar
                   activeTab={activeScreen as any}
@@ -134,10 +135,11 @@ export function AppShell({
                   onNotificationPress={() => setNotificationModalVisible(true)}
                   onAvatarPress={() => handleNavigation("userMenu")}
                   user={user}
+                  dispenserName={dispenserName}
               />
           )}
 
-          <View style={styles.body}>
+          <View style={[styles.body, hasTabs && styles.bodyWithTabs]}>
             {activeScreen === "home" && <HomeScreen onNavigate={handleNavigation} />}
 
             {activeScreen === "medications" && (
@@ -151,12 +153,11 @@ export function AppShell({
             {activeScreen === "history" && <HistoryScreen />}
             {activeScreen === "settings" && <SettingsScreen />}
 
-            {/* ✅ Corrigido: Agora passa a prop 'isOwner' corretamente */}
             {activeScreen === "caregiver" && (
                 <CaregiverScreen
                     token={token}
                     dispenserId={selectedDispenserId}
-                    isOwner={checkIfOwner()}
+                    isOwner={!!isOwnerOfCurrentDevice}
                 />
             )}
 
@@ -166,11 +167,26 @@ export function AppShell({
                 <DispenserScreen
                     token={token}
                     selectedDispenserId={selectedDispenserId}
-                    onSelectDispenser={(id, canEdit) => {
+                    onSelectDispenser={async (id, canEdit) => {
                       setSelectedDispenserId(id);
-                      // ✅ Lógica Corrigida: Verifica as duas opções ao selecionar
-                      const isOwner = checkIfOwner();
-                      setCanEditMedications(isOwner || canEdit);
+
+                      try {
+                        // ✅ CORREÇÃO 3: Quando o usuário escolhe ou adiciona um dispositivo,
+                        // re-buscamos a lista na hora para o AppShell incluir o novo aparelho no estado
+                        const freshDispensers = await getDispensers(token);
+                        setDispensersList(freshDispensers);
+
+                        const selectedDevice = freshDispensers.find(d => Number(d.id) === Number(id));
+                        const isOwner = selectedDevice && Number(selectedDevice.sponsor_id) === Number(user.id);
+
+                        setCanEditMedications(!!(isOwner || canEdit));
+                      } catch (err) {
+                        // Fallback de segurança caso a rede falhe
+                        const selectedDevice = dispensersList.find(d => Number(d.id) === Number(id));
+                        const isOwner = selectedDevice && Number(selectedDevice.sponsor_id) === Number(user.id);
+                        setCanEditMedications(!!(isOwner || canEdit));
+                      }
+
                       setActiveScreen("home");
                     }}
                 />
@@ -189,7 +205,7 @@ export function AppShell({
             )}
           </View>
 
-          {["home", "medications", "history"].includes(activeScreen) && (
+          {hasTabs && (
               <BottomTabs activeTab={activeScreen as any} onChange={handleNavigation} />
           )}
         </View>
@@ -210,11 +226,8 @@ export function AppShell({
 
 // --- COMPONENTES AUXILIARES ---
 
-function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, user }: any) {
+function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, user, dispenserName }: any) {
   const isSettings = activeTab === "settings";
-  // ✅ Lógica Corrigida aqui também para o selo da TopBar
-  const isOwner = user.role?.toLowerCase() === 'sponsor' || user.role?.toLowerCase() === 'responsavel';
-  const roleLabel = isOwner ? "Responsável" : "Cuidador";
 
   return (
       <View style={styles.topBar}>
@@ -226,7 +239,7 @@ function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, us
             <Text style={styles.topTitle}>{isSettings ? "Configurações" : `Olá, ${user.name}!`}</Text>
             {!isSettings && (
                 <View style={styles.statusRow}>
-                  <Text style={styles.statusPill}>{}</Text>
+                  <Text style={styles.statusPill}>{`Dispositivo: ${dispenserName}`}</Text>
                   <Feather name="wifi" size={12} color={colors.secondary} />
                 </View>
             )}
@@ -244,7 +257,7 @@ function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, us
 function BottomTabs({ activeTab, onChange }: any) {
   const items: Array<{ key: string; label: string; icon: any }> = [
     { key: "home", label: "Início", icon: "home" },
-    { key: "medications", label: "Remédios", icon: "plus-square" },
+    { key: "medications", label: "Medicamentos", icon: "plus-square" },
     { key: "history", label: "Histórico", icon: "archive" },
   ];
 
@@ -272,7 +285,6 @@ function BottomTabs({ activeTab, onChange }: any) {
   );
 }
 
-// ... Modais de Notificação e Logout mantidos ...
 function NotificationModal({ visible, onClose }: any) {
   return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -314,13 +326,14 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
   loadingText: { marginTop: 12, color: colors.textMuted, fontWeight: "600" },
   body: { flex: 1 },
+  bodyWithTabs: { paddingBottom: 110 },
   topBar: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(248,250,251,0.9)" },
   profileBlock: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 42, height: 42, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: "center", justifyContent: "center" },
   profileCopy: { gap: 4 },
   topTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  statusPill: { backgroundColor: "rgba(111,251,133,0.32)", color: colors.secondary, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 2, fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  statusPill: { backgroundColor: "rgba(111,251,133,0.32)", color: colors.secondary, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 2, fontSize: 11, fontWeight: "800" },
   topActions: { flexDirection: "row", gap: 12 },
   bottomTabs: { position: "absolute", left: 16, right: 16, bottom: 16, flexDirection: "row", justifyContent: "space-around", backgroundColor: "rgba(255,255,255,0.92)", borderRadius: radius.lg, padding: 8 },
   idleTab: { borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", justifyContent: "center", gap: 4, minWidth: 76 },

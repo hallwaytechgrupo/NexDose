@@ -28,7 +28,7 @@ export function CreateAccountScreen({
     email: string;
     phone: string;
     password: string;
-    role: "responsavel" | "caregiver";
+    role: "sponsor" | "caregiver";
   }) => Promise<void>;
   onNavigateToLogin?: () => void;
 }) {
@@ -37,7 +37,7 @@ export function CreateAccountScreen({
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"responsavel" | "caregiver">("responsavel");
+  const [role, setRole] = useState<"sponsor" | "caregiver">("sponsor");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

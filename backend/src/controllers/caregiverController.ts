@@ -15,43 +15,41 @@ function toInt(value: unknown): number | null {
 
 async function ensureIsDeviceOwner(userId: number, dispenserId: number): Promise<boolean> {
   const result = await pool.query(
-    `SELECT id FROM dispensers WHERE id = $1 AND sponsor_id = $2`,
-    [dispenserId, userId]
+      `SELECT id FROM dispensers WHERE id = $1 AND sponsor_id = $2`,
+      [dispenserId, userId]
   );
   return result.rows.length > 0;
 }
 
-// Lista cuidadores com acesso a um dispenser especifico (somente o dono).
 export const getDeviceCaregivers = async (req: Request, res: Response) => {
   const sponsorId = Number((req as any).userId);
   const dispenserId = toInt(req.query.dispenserId);
 
   if (!dispenserId) {
-    return res.status(400).json({ error: 'dispenserId e obrigatorio.' });
+    return res.status(400).json({ error: 'dispenserId é obrigatório.' });
   }
 
   if (!(await ensureIsDeviceOwner(sponsorId, dispenserId))) {
-    return res.status(403).json({ error: 'Sem permissao para listar acessos deste dispositivo.' });
+    return res.status(403).json({ error: 'Sem permissão para listar acessos deste dispositivo.' });
   }
 
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.email, da.can_edit_medications
-       FROM device_access da
-       JOIN users u ON u.id = da.user_id
-       WHERE da.dispenser_id = $1
-       ORDER BY da.created_at DESC`,
-      [dispenserId]
+        `SELECT u.id, u.name, u.email, da.can_edit_medications
+         FROM device_access da
+                JOIN users u ON u.id = da.user_id
+         WHERE da.dispenser_id = $1
+         ORDER BY da.created_at DESC`,
+        [dispenserId]
     );
 
-    res.status(200).json(result.rows);
+    return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Erro ao buscar cuidadores do dispositivo:', error);
-    res.status(500).json({ error: 'Erro ao buscar cuidadores.' });
+    return res.status(500).json({ error: 'Erro ao buscar cuidadores.' });
   }
 };
 
-// Compartilha um dispenser com um cuidador (por email). Somente o dono pode conceder acesso.
 export const addCaregiver = async (req: Request<{}, {}, AddCaregiverBody>, res: Response) => {
   const sponsorId = Number((req as any).userId);
   const dispenserId = toInt(req.body?.dispenserId);
@@ -59,38 +57,43 @@ export const addCaregiver = async (req: Request<{}, {}, AddCaregiverBody>, res: 
   const canEdit = Boolean(req.body?.canEditMedications);
 
   if (!dispenserId) {
-    return res.status(400).json({ error: 'dispenserId e obrigatorio.' });
+    return res.status(400).json({ error: 'dispenserId é obrigatório.' });
   }
   if (!caregiverEmail || typeof caregiverEmail !== 'string') {
-    return res.status(400).json({ error: 'E-mail do cuidador e obrigatorio.' });
+    return res.status(400).json({ error: 'E-mail do cuidador é obrigatório.' });
   }
 
   if (!(await ensureIsDeviceOwner(sponsorId, dispenserId))) {
-    return res.status(403).json({ error: 'Sem permissao para compartilhar este dispositivo.' });
+    return res.status(403).json({ error: 'Sem permissão para compartilhar este dispositivo.' });
   }
 
   const client = await pool.connect();
   try {
+    // ✅ CORREÇÃO: Removido o filtro "AND role = 'caregiver'" para permitir qualquer usuário por e-mail
     const caregiverResult = await client.query(
-      `SELECT id, name, email FROM users WHERE email = $1 AND role = 'caregiver'`,
-      [caregiverEmail.trim()]
+        `SELECT id, name, email FROM users WHERE email = $1`,
+        [caregiverEmail.trim()]
     );
 
     if (caregiverResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Cuidador nao encontrado.' });
+      return res.status(404).json({ error: 'Usuário não encontrado com este e-mail.' });
     }
 
     const caregiver = caregiverResult.rows[0];
 
+    if (Number(caregiver.id) === Number(sponsorId)) {
+      return res.status(400).json({ error: 'Você não pode adicionar a si mesmo como cuidador.' });
+    }
+
     await client.query(
-      `INSERT INTO device_access (dispenser_id, user_id, can_edit_medications)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (dispenser_id, user_id)
-       DO UPDATE SET can_edit_medications = EXCLUDED.can_edit_medications`,
-      [dispenserId, caregiver.id, canEdit]
+        `INSERT INTO device_access (dispenser_id, user_id, can_edit_medications)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (dispenser_id, user_id)
+           DO UPDATE SET can_edit_medications = EXCLUDED.can_edit_medications`,
+        [dispenserId, caregiver.id, canEdit]
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       id: caregiver.id,
       name: caregiver.name,
       email: caregiver.email,
@@ -98,38 +101,36 @@ export const addCaregiver = async (req: Request<{}, {}, AddCaregiverBody>, res: 
     });
   } catch (error) {
     console.error('Erro ao compartilhar dispositivo:', error);
-    res.status(500).json({ error: 'Erro ao associar.' });
+    return res.status(500).json({ error: 'Erro ao associar.' });
   } finally {
     client.release();
   }
 };
 
-// Remove o acesso de um cuidador a um dispenser (somente dono).
 export const removeCaregiver = async (req: Request, res: Response) => {
   const sponsorId = Number((req as any).userId);
   const dispenserId = toInt(req.query.dispenserId);
   const caregiverId = toInt(req.params.caregiverId);
 
   if (!dispenserId) {
-    return res.status(400).json({ error: 'dispenserId e obrigatorio.' });
+    return res.status(400).json({ error: 'dispenserId é obrigatório.' });
   }
   if (!caregiverId) {
-    return res.status(400).json({ error: 'caregiverId invalido.' });
+    return res.status(400).json({ error: 'caregiverId inválido.' });
   }
 
   if (!(await ensureIsDeviceOwner(sponsorId, dispenserId))) {
-    return res.status(403).json({ error: 'Sem permissao para remover acesso deste dispositivo.' });
+    return res.status(403).json({ error: 'Sem permissão para remover acesso deste dispositivo.' });
   }
 
   try {
     await pool.query(
-      `DELETE FROM device_access WHERE dispenser_id = $1 AND user_id = $2`,
-      [dispenserId, caregiverId]
+        `DELETE FROM device_access WHERE dispenser_id = $1 AND user_id = $2`,
+        [dispenserId, caregiverId]
     );
-    res.status(200).json({ message: 'Acesso removido com sucesso.' });
+    return res.status(200).json({ message: 'Acesso removido com sucesso.' });
   } catch (error) {
     console.error('Erro ao remover cuidador do dispositivo:', error);
-    res.status(500).json({ error: 'Erro ao remover cuidador.' });
+    return res.status(500).json({ error: 'Erro ao remover cuidador.' });
   }
 };
-

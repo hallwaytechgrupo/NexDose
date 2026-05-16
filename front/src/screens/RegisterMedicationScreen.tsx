@@ -13,7 +13,6 @@ import {
   SectionTitle,
   SurfaceCard,
 } from "../components/Primitives";
-import { intervals } from "../data/mockData"; // Certifique-se que este mock existe
 import { colors, radius } from "../theme/tokens";
 import {
   createMedication,
@@ -25,7 +24,42 @@ import {
 interface MedicationsScreenProps {
   token: string;
   dispenserId: number | null;
-  canEdit: boolean; // Flag de permissão vinda do AppShell
+  canEdit: boolean;
+}
+
+// ✅ A FUNÇÃO QUE VOCÊ QUERIA: Calcula os 4 horários no celular avançando o relógio automaticamente
+function getNextFourDoses(nextDoseStr: string, intervalHours: number): string[] {
+  if (!nextDoseStr || nextDoseStr === '--:--') return [];
+
+  const [hourStr, minuteStr] = nextDoseStr.split(":");
+  const baseHour = parseInt(hourStr, 10);
+  const baseMinute = parseInt(minuteStr, 10) || 0;
+
+  const now = new Date();
+  const doseDate = new Date();
+  doseDate.setHours(baseHour, baseMinute, 0, 0);
+
+  // Retrocede 24 horas para garantir o encaixe perfeito no fuso e ciclo correto
+  doseDate.setDate(doseDate.getDate() - 1);
+
+  // Avança de intervalo em intervalo ATÉ passar do horário atual de agora
+  while (doseDate <= now) {
+    doseDate.setHours(doseDate.getHours() + intervalHours);
+  }
+
+  // Agora gera a sequência dos próximos 4 horários futuros
+  const hoursList: string[] = [];
+  const tempDate = new Date(doseDate);
+
+  for (let i = 0; i < 4; i++) {
+    const h = String(tempDate.getHours()).padStart(2, '0');
+    const m = String(tempDate.getMinutes()).padStart(2, '0');
+    hoursList.push(`${h}:${m}`);
+
+    tempDate.setHours(tempDate.getHours() + intervalHours);
+  }
+
+  return hoursList;
 }
 
 export default function MedicationsScreen({
@@ -68,10 +102,10 @@ export default function MedicationsScreen({
         id: String(med.id),
         name: med.name,
         dosage: med.dosage || '',
-        interval: med.interval_hours,
-        nextDose: med.start_time ? med.start_time.substring(0, 5) : '--:--',
-        endDate: med.end_date,
-        isContinuous: med.end_date === null,
+        interval: med.interval_hours || med.interval,
+        nextDose: med.start_time ? med.start_time.substring(0, 5) : (med.nextDose ? med.nextDose.substring(0, 5) : '--:--'),
+        endDate: med.end_date || med.endDate,
+        isContinuous: med.is_continuous !== undefined ? med.is_continuous : med.isContinuous,
       }));
 
       setMedicationsList(formattedData);
@@ -106,8 +140,7 @@ export default function MedicationsScreen({
     setIsContinuous(med.isContinuous);
     if (med.endDate) setEndDate(new Date(med.endDate));
 
-    // Ajusta o horário da 1ª dose para exibição
-    if (med.nextDose !== '--:--') {
+    if (med.nextDose && med.nextDose !== '--:--') {
       const [h, m] = med.nextDose.split(':');
       const d = new Date();
       d.setHours(parseInt(h), parseInt(m), 0, 0);
@@ -162,7 +195,7 @@ export default function MedicationsScreen({
 
   return (
       <AppScreen useScrollView={false}>
-        <Text style={styles.pageTitle}>Medicamentos do Dispositivo</Text>
+        <Text style={styles.pageTitle}>Medicamentos</Text>
 
         {isLoading ? (
             <View style={styles.centered}>
@@ -174,12 +207,31 @@ export default function MedicationsScreen({
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => {
                   const isExpired = item.endDate && new Date(item.endDate) < new Date();
+
+                  // ✅ Executa a função aqui no front-end para gerar os 4 tempos dinâmicos
+                  const nextHours = getNextFourDoses(item.nextDose, item.interval);
+
                   return (
                       <SurfaceCard muted style={[styles.medCard, isExpired && { opacity: 0.6 }]}>
                         <View style={styles.cardHeader}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.medName}>{item.name} {item.dosage}</Text>
-                            <Text style={styles.medInfo}>Próxima: {item.nextDose} • {item.interval}h</Text>
+                          <View style={{ flex: 1, gap: 8 }}>
+                            <View>
+                              <Text style={styles.medName}>{item.name} {item.dosage}</Text>
+                              <Text style={styles.medInfo}>Intervalo: de {item.interval}h em {item.interval}h</Text>
+                            </View>
+
+                            {/* ✅ O MAP que renderiza os quadradinhos de horários na horizontal */}
+                            {nextHours.length > 0 && (
+                                <View style={styles.scheduleRow}>
+                                  {nextHours.map((time, index) => (
+                                      <View key={index} style={[styles.timeBadge, index === 0 && styles.nextTimeBadge]}>
+                                        <Text style={[styles.timeBadgeText, index === 0 && styles.nextTimeBadgeText]}>
+                                          {time}
+                                        </Text>
+                                      </View>
+                                  ))}
+                                </View>
+                            )}
                           </View>
                           {canEdit && (
                               <Pressable style={styles.editButton} onPress={() => handleOpenEdit(item)}>
@@ -283,7 +335,15 @@ const styles = StyleSheet.create({
   medCard: { padding: 16, marginBottom: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   medName: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
+  medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+
+  // Estilos da fileira de crachás
+  scheduleRow: { flexDirection: "row", gap: 6, marginTop: 6 },
+  timeBadge: { backgroundColor: "#F3F4F6", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#E5E7EB" },
+  timeBadgeText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
+  nextTimeBadge: { backgroundColor: "rgba(111,251,133,0.2)", borderColor: colors.secondary || "#6FFB85" },
+  nextTimeBadgeText: { color: "#2E7D32", fontWeight: "800" },
+
   tagRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   intervalTag: { backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
   continuousTag: { backgroundColor: '#E3F2FD', color: '#1976D2', paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },

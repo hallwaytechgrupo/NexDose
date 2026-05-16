@@ -10,32 +10,31 @@ if (!jwtSecret) {
 
 export const register = async (req: Request, res: Response) => {
     const { name, email, password, role } = req.body;
-    const dbRole = role === 'responsavel' ? 'sponsor' : role;
 
-    if (!["sponsor", "caregiver"].includes(dbRole)) {
-        return res.status(400).json({ error: 'Papel inválido. Use "responsavel" ou "caregiver".' });
+    // ✅ CORREÇÃO 1: Validação direta usando a role vinda da requisição
+    if (!role || !["sponsor", "caregiver"].includes(role.toLowerCase())) {
+        return res.status(400).json({ error: 'Papel inválido. Use "sponsor" ou "caregiver".' });
     }
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
+
+        // ✅ CORREÇÃO 2: Adicionado RETURNING para capturar e retornar o usuário criado sem travar
         const newUser = await pool.query(
             "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role",
-            [name, email, hashedPassword, dbRole]
+            [name, email, hashedPassword, role.toLowerCase()]
         );
 
-        const userToReturn = {
-            ...newUser.rows[0],
-            role: newUser.rows[0].role === 'sponsor' ? 'responsavel' : newUser.rows[0].role
-        };
-        return res.status(201).json(userToReturn);
+        // ✅ REMOVIDO: Toda a lógica de tradução artificial. Retorna direto o dado limpo do banco.
+        return res.status(201).json(newUser.rows[0]);
     } catch (error: any) {
-        console.error("ERRO COMPLETO NO REGISTRO:", error); // Adicione isso aqui!
+        console.error("ERRO COMPLETO NO REGISTRO:", error);
         if (error.code === "23505") {
             return res.status(409).json({ error: "Este e-mail já está em uso." });
         }
         return res.status(500).json({
             error: "Erro ao registrar usuário.",
-            details: error.message // Isso ajudará a debugar no Postman/App
+            details: error.message
         });
     }
 };
@@ -59,7 +58,7 @@ export const login = async (req: Request, res: Response) => {
         const token = jwt.sign(
             { userId: user.id, role: user.role },
             jwtSecret,
-            { expiresIn: "7d" } // Aumentado para 7 dias para melhor UX no app NexDose
+            { expiresIn: "7d" } // 7 dias de UX estável para o NexDose
         );
 
         return res.json({
@@ -68,7 +67,7 @@ export const login = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role === 'sponsor' ? 'responsavel' : user.role,
+                role: user.role, // ✅ REMOVIDO: Agora entrega puramente 'sponsor' ou 'caregiver'
             },
         });
     } catch (error) {
@@ -77,7 +76,7 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const updateProfile = async (req: Request, res: Response) => {
-    const userId = (req as any).userId; // Injetado pelo authMiddleware
+    const userId = (req as any).userId;
     const { name, email, password } = req.body;
 
     try {
@@ -97,16 +96,11 @@ export const updateProfile = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Usuário não encontrado." });
         }
 
-        const userToReturn = {
-            ...updatedUser.rows[0],
-            role: updatedUser.rows[0].role === 'sponsor' ? 'responsavel' : updatedUser.rows[0].role
-        };
-
-        return res.json({ message: "Perfil atualizado com sucesso.", user: userToReturn });
+        // ✅ REMOVIDO: Retorna diretamente o objeto limpo do banco sem conversões desnecessárias
+        return res.json({ message: "Perfil atualizado com sucesso.", user: updatedUser.rows[0] });
     } catch (error: any) {
         return res.status(500).json({ error: "Erro ao atualizar perfil." });
     }
-
 };
 
 export const updateAvatar = async (req: Request, res: Response) => {
@@ -118,13 +112,12 @@ export const updateAvatar = async (req: Request, res: Response) => {
     }
 
     try {
-        // Opcional: Aqui você pode buscar a foto antiga e deletar do disco antes de atualizar
         await pool.query(
             'UPDATE users SET avatar_url = $1 WHERE id = $2',
             [avatar_url, userId]
         );
 
-        return res.json({ message: 'Foto atualizada!', avatar_url });
+        return res.json({ message: 'Foto updated!', avatar_url });
     } catch (error) {
         return res.status(500).json({ error: 'Erro ao salvar foto no banco.' });
     }

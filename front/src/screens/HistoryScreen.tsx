@@ -105,7 +105,7 @@ export function HistoryScreen() {
               </View>
             </View>
           </View>
-          <GradientButton title="Ligar para responsavel" />
+          <GradientButton title="Ligar para o Responsável" />
           <Text style={styles.helpCopy}>
             Em caso de emergencia, o responsavel sera notificado com sua
             localizacao atual.
