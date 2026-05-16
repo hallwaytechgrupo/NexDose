@@ -140,8 +140,13 @@ export function AppShell({
           )}
 
           <View style={[styles.body, hasTabs && styles.bodyWithTabs]}>
-            {activeScreen === "home" && <HomeScreen onNavigate={handleNavigation} />}
-
+            {activeScreen === "home" && (
+                <HomeScreen
+                    onNavigate={handleNavigation}
+                    token={token}                      // 👈 Injeta o token real vindo do login
+                    dispenserId={selectedDispenserId}  // 👈 Injeta o ID do dispenser ativo
+                />
+            )}
             {activeScreen === "medications" && (
                 <MedicationsScreen
                     token={token}
@@ -151,7 +156,12 @@ export function AppShell({
             )}
 
             {activeScreen === "history" && <HistoryScreen />}
-            {activeScreen === "settings" && <SettingsScreen />}
+            {activeScreen === "settings" && (
+                <SettingsScreen
+                    token={token}
+                    dispenserId={selectedDispenserId}
+                />
+            )}
 
             {activeScreen === "caregiver" && (
                 <CaregiverScreen

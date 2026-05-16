@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
+    process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.15.8:3000";
 
 // --- INTERFACES ---
 

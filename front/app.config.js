@@ -24,7 +24,7 @@ export default {
       edgeToEdgeEnabled: true,
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY
+          apiKey: process.env.GOOGLE_MAPS_API_KEY,
         }
       }
     },

@@ -71,10 +71,12 @@ export function GradientButton({
                                    title,
                                    onPress,
                                    variant,
+                                   disabled
                                }: {
-    title: string;
-    onPress?: () => void;
-    variant?: "default" | "danger";
+    title: string,
+    onPress?: () => void,
+    variant?: "default" | "danger",
+    disabled?: boolean
 }) {
     const gradientColors: [string, string] =
         variant === "danger"

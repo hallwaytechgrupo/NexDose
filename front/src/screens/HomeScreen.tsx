@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Pressable, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { adherence, quickActions, TabKey } from "../data/mockData";
 import {
@@ -10,137 +10,237 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
+import { getMedications } from "../services/api"; // ✅ Sua rota de integração
 
-
-/**
- * @file HomeScreen.tsx
- * @brief Tela principal (Dashboard) do aplicativo NexDose.
- * 
- * Exibe informações vitais para o usuário de relance, incluindo:
- * - Tempo e detalhes da próxima dose de medicação.
- * - Status do dispositivo dispensador (ex: bateria).
- * - Gráfico de aderência semanal.
- * - Links rápidos para outras áreas importantes (Cuidadores, Farmácia).
- */
-export function HomeScreen({
-  onNavigate,
-}: {
+interface HomeScreenProps {
+  token: string;
+  dispenserId: number | null;
   onNavigate: (tab: TabKey) => void;
-}) {
+}
+
+export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) {
+  // --- ESTADOS DA API ---
+  const [nextMed, setNextMed] = useState<any>(null);
+  const [countdown, setCountdown] = useState<string>("--:--h");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNextMedication();
+
+    // ✅ Cronômetro: Atualiza o contador na tela a cada 1 minuto
+    const intervalId = setInterval(() => {
+      fetchNextMedication();
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [token, dispenserId]);
+
+  const fetchNextMedication = async () => {
+    // 🔍 LOG 1: Descobrir se a função sequer é chamada e o que está vindo nas variáveis
+    console.log("➔ 1. ESCUTOU CHAMADA: dispenserId =", dispenserId, " | token =", token ? "Preenchido" : "Vazio");
+
+    if (!dispenserId) {
+      // 🔍 LOG 2: Se parar aqui, o componente pai não está passando o ID do dispenser para a Home!
+      console.log("⚠️ 2. TRAVOU NO IF: Função cancelada porque dispenserId é nulo, falso ou zero.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log("➔ 3. DISPARANDO API: Chamando getMedications...");
+      const data = await getMedications(token, dispenserId);
+
+      // 🔍 LOG 3: Ver a resposta real do banco de dados
+      console.log("✅ 4. BANCO DEVOLVEU DADOS:", data);
+
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.log("ℹ️ 5. ARRAY VAZIO: O banco respondeu, mas veio zero remédios cadastrados.");
+        setNextMed(null);
+        setCountdown("--:--h");
+        return;
+      }
+
+      const now = new Date();
+      let absoluteClosestMed: any = null;
+      let minDiff = Infinity;
+      let calculatedCountdown = "--:--h";
+
+      data.forEach((med: any) => {
+        const nextDoseStr = med.nextDose || med.start_time || med.startTime;
+        const intervalHours = Number(med.interval || med.interval_hours) || 8;
+
+        if (!nextDoseStr || nextDoseStr === "--:--" || nextDoseStr.includes("NaN")) return;
+
+        let doseDate = new Date();
+
+        if (nextDoseStr.includes("T") || nextDoseStr.includes("-")) {
+          const parsedIso = new Date(nextDoseStr);
+          if (!isNaN(parsedIso.getTime())) {
+            doseDate = parsedIso;
+          }
+        } else {
+          const [hourStr, minuteStr] = nextDoseStr.split(":");
+          const baseHour = parseInt(hourStr, 10);
+          const baseMinute = parseInt(minuteStr, 10) || 0;
+
+          if (isNaN(baseHour)) return;
+
+          doseDate.setHours(baseHour, baseMinute, 0, 0);
+          doseDate.setDate(doseDate.getDate() - 1);
+        }
+
+        while (doseDate <= now) {
+          doseDate.setHours(doseDate.getHours() + intervalHours);
+        }
+
+        const diff = doseDate.getTime() - now.getTime();
+
+        if (diff < minDiff) {
+          minDiff = diff;
+          absoluteClosestMed = {
+            name: med.name,
+            dosage: med.dosage || "",
+          };
+
+          const totalMinutes = Math.floor(diff / 1000 / 60);
+          const hrs = Math.floor(totalMinutes / 60);
+          const mins = totalMinutes % 60;
+          calculatedCountdown = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}h`;
+        }
+      });
+
+      console.log("🎯 6. CÁLCULO FINAL:", absoluteClosestMed, "Contador:", calculatedCountdown);
+      setNextMed(absoluteClosestMed);
+      setCountdown(calculatedCountdown);
+    } catch (error: any) {
+      // 🔍 LOG 4: Se a requisição cair por erro de rede/token, vai estourar aqui
+      console.log("❌ 7. ERRO CRÍTICO NA REQUISIÇÃO:", error.message || error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <AppScreen>
-      {/* 
-        Cartão principal em destaque mostrando a próxima medicação.
-        Usa o componente GlassCard para um visual translúcido moderno.
-      */}
-      <GlassCard>
-        <Text style={styles.heroLabel}>Proxima dose em</Text>
-        <View style={styles.ringWrap}>
-          <View style={styles.ringOuter}>
-            <View style={styles.ringInner}>
-              <Text style={styles.heroTime}>02:45h</Text>
-              <Text style={styles.heroMedication}>Amoxicilina 500mg</Text>
+      <AppScreen>
+        {/* Cartão principal dinâmico do remédio */}
+        <GlassCard>
+          <Text style={styles.heroLabel}>Proxima dose em</Text>
+          <View style={styles.ringWrap}>
+            <View style={styles.ringOuter}>
+              <View style={styles.ringInner}>
+                {isLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                ) : nextMed ? (
+                    <>
+                      {/* ✅ Tempo Real calculado vindo do banco */}
+                      <Text style={styles.heroTime}>{countdown}</Text>
+                      <Text style={styles.heroMedication}>
+                        {nextMed.name} {nextMed.dosage}
+                      </Text>
+                    </>
+                ) : (
+                    <>
+                      <Text style={[styles.heroTime, { fontSize: 24 }]}>--:--</Text>
+                      <Text style={[styles.heroMedication, { color: colors.textMuted }]}>
+                        Nenhum agendado
+                      </Text>
+                    </>
+                )}
+              </View>
             </View>
           </View>
+          <GradientAction
+              label="Confirmar agora"
+              onPress={() => onNavigate("history")}
+          />
+        </GlassCard>
+
+        {/* Grade contendo o status do dispositivo e o gráfico de aderência */}
+        <View style={styles.grid}>
+          {/* Cartão de status do dispositivo IoT */}
+          <SurfaceCard muted>
+            <View style={styles.statusHeader}>
+              <Feather name="battery-charging" size={24} color={colors.text} />
+              <Text style={styles.stablePill}>Estavel</Text>
+            </View>
+            <Text style={styles.metaLabel}>Status do dispositivo</Text>
+            <Text style={styles.cardTitle}>Bateria 82%</Text>
+            <Text style={styles.cardBody}>
+              Proxima recarga estimada em 4 dias.
+            </Text>
+          </SurfaceCard>
+
+          {/* Cartão do gráfico de aderência semanal */}
+          <SurfaceCard>
+            <View style={styles.chartHeader}>
+              <Text style={styles.cardTitle}>Aderencia semanal</Text>
+              <Feather name="arrow-up-circle" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.chartRow}>
+              {adherence.map((value, index) => (
+                  <View
+                      key={`${value}-${index}`}
+                      style={[
+                        styles.bar,
+                        { height: value },
+                        index === 4 ? styles.barActive : styles.barIdle,
+                      ]}
+                  />
+              ))}
+            </View>
+            <View style={styles.daysRow}>
+              {["S", "T", "Q", "Q", "S", "S", "D"].map((day, index) => (
+                  <Text key={`${day}-${index}`} style={styles.dayLabel}>
+                    {day}
+                  </Text>
+              ))}
+            </View>
+          </SurfaceCard>
         </View>
-        <GradientAction
-          label="Confirmar agora"
-          onPress={() => onNavigate("history")} // Navega para o histórico simulando a confirmação.
-        />
-      </GlassCard>
 
-      {/* Grade contendo o status do dispositivo e o gráfico de aderência */}
-      <View style={styles.grid}>
-        {/* Cartão de status do dispositivo IoT */}
-        <SurfaceCard muted>
-          <View style={styles.statusHeader}>
-            <Feather name="battery-charging" size={24} color={colors.text} />
-            <Text style={styles.stablePill}>Estavel</Text>
-          </View>
-          <Text style={styles.metaLabel}>Status do dispositivo</Text>
-          <Text style={styles.cardTitle}>Bateria 82%</Text>
-          <Text style={styles.cardBody}>
-            Proxima recarga estimada em 4 dias.
-          </Text>
-        </SurfaceCard>
-
-        {/* Cartão do gráfico de aderência semanal */}
-        <SurfaceCard>
-          <View style={styles.chartHeader}>
-            <Text style={styles.cardTitle}>Aderencia semanal</Text>
-            <Feather name="arrow-up-circle" size={24} color={colors.primary} />
-          </View>
-          <View style={styles.chartRow}>
-            {/* Renderiza dinamicamente as barras do gráfico com base nos dados 'adherence' */}
-            {adherence.map((value, index) => (
-              <View
-                key={`${value}-${index}`}
-                style={[
-                  styles.bar,
-                  { height: value },
-                  // Destaca o dia atual (índice 4 no mock)
-                  index === 4 ? styles.barActive : styles.barIdle,
-                ]}
-              />
+        {/* Seção de acesso rápido (atalhos) */}
+        <View style={styles.sectionBlock}>
+          <SectionTitle>Acesso rapido</SectionTitle>
+          <View style={styles.actionsGrid}>
+            {quickActions.map((action) => (
+                <Pressable
+                    key={action.key}
+                    onPress={() => {
+                      if (action.key === "caregiver") onNavigate("caregiver");
+                      if (action.key === "pharmacy") onNavigate("pharmacy");
+                      if (action.key === "dispenser") onNavigate("dispenser");
+                    }}
+                    style={styles.actionCard}
+                >
+                  <View style={styles.actionIconWrap}>
+                    <Feather
+                        name={action.icon as any}
+                        size={24}
+                        color={colors.primary}
+                    />
+                  </View>
+                  <Text style={styles.actionLabel}>{action.label}</Text>
+                </Pressable>
             ))}
           </View>
-          <View style={styles.daysRow}>
-            {["S", "T", "Q", "Q", "S", "S", "D"].map((day, index) => (
-              <Text key={`${day}-${index}`} style={styles.dayLabel}>
-                {day}
-              </Text>
-            ))}
-          </View>
-        </SurfaceCard>
-      </View>
-
-      {/* Seção de acesso rápido (atalhos) */}
-      <View style={styles.sectionBlock}>
-        <SectionTitle>Acesso rapido</SectionTitle>
-        <View style={styles.actionsGrid}>
-          {/* Mapeia os atalhos disponíveis nos dados simulados (mockData) */}
-          {quickActions.map((action) => (
-            <Pressable
-              key={action.key}
-              onPress={() => {
-                if (action.key === "caregiver") onNavigate("caregiver");
-                if (action.key === "pharmacy") onNavigate("pharmacy");
-                if (action.key === "dispenser") onNavigate("dispenser");
-              }}
-              style={styles.actionCard}
-            >
-              <View style={styles.actionIconWrap}>
-                <Feather
-                  name={action.icon as any}
-                  size={24}
-                  color={colors.primary}
-                />
-              </View>
-              <Text style={styles.actionLabel}>{action.label}</Text>
-            </Pressable>
-          ))}
         </View>
-      </View>
-    </AppScreen>
+      </AppScreen>
   );
 }
 
-/**
- * Componente auxiliar para renderizar o botão com gradiente no cartão principal.
- */
 function GradientAction({
-  label,
-  onPress,
-}: {
+                          label,
+                          onPress,
+                        }: {
   label: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress}>
-      <LinearGradient colors={[colors.primary, colors.primaryBright]} style={styles.heroButton}>
-        <Text style={styles.heroButtonText}>{label}</Text>
-      </LinearGradient>
-    </Pressable>
+      <Pressable onPress={onPress}>
+        <LinearGradient colors={[colors.primary, colors.primaryBright]} style={styles.heroButton}>
+          <Text style={styles.heroButtonText}>{label}</Text>
+        </LinearGradient>
+      </Pressable>
   );
 }
 
@@ -156,7 +256,6 @@ const styles = StyleSheet.create({
   ringWrap: {
     alignItems: "center",
     marginVertical: 20,
-    
   },
   ringOuter: {
     width: 220,
@@ -176,16 +275,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
+    paddingHorizontal: 10,
   },
   heroTime: {
     color: colors.text,
-    fontSize: 38,
+    fontSize: 34, // Um tiquinho menor para acomodar o "h" com segurança sem quebrar linha
     fontWeight: "900",
   },
   heroMedication: {
     color: colors.primary,
     fontSize: 15,
     fontWeight: "700",
+    textAlign: "center",
   },
   heroButton: {
     borderRadius: radius.lg,
@@ -199,7 +300,6 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: 16,
-
   },
   statusHeader: {
     flexDirection: "row",
