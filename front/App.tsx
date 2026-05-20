@@ -11,6 +11,10 @@ import {
   updateProfile,
 } from "./src/services/api";
 import * as SecureStore from "expo-secure-store";
+import { initializeApp } from "firebase/app";
+
+
+
 
 type Screen = "login" | "createAccount" | "app";
 

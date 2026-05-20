@@ -3,35 +3,40 @@ import 'dotenv/config';
 export default {
   expo: {
     name: "NexDose",
-    icon: "./src/assets/ndIcon.png",
     slug: "nexdose-mobile",
     scheme: "nexdose",
     version: "1.0.0",
     orientation: "portrait",
+    icon: "./src/assets/ndIcon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false, // Recomendo deixar false por enquanto para evitar o erro de native module
+    newArchEnabled: false, // Mantido em false para garantir compatibilidade com módulos nativos atuais
+
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.nexdose.mobile"
+      bundleIdentifier: "com.nexdose.mobile",
+      googleServicesFile: "./GoogleService-Info.plist"
     },
+
     android: {
-      adaptiveIcon: {
-        foregroundImage: "./src/assets/img/ndIcon.png",
-        backgroundColor: "#FFFFFF",
-        googleServicesFile: "./google-services.json",
-      },
       package: "com.nexdose.mobile",
+      googleServicesFile: "./google-services.json",
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
+      adaptiveIcon: {
+        foregroundImage: "./src/assets/img/ndIcon.png",
+        backgroundColor: "#FFFFFF"
+      },
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
         }
       }
     },
+
     web: {
       bundler: "metro"
     },
+
     plugins: [
       [
         "expo-notifications",
@@ -40,9 +45,11 @@ export default {
         }
       ]
     ],
+
     experiments: {
       typedRoutes: true
     },
+
     extra: {
       router: {},
       eas: {

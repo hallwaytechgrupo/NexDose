@@ -15,8 +15,6 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotificationsAsync() {
-    let token;
-
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
@@ -26,28 +24,30 @@ export async function registerForPushNotificationsAsync() {
         });
     }
 
-    // Verifica se é um aparelho físico (Push não funciona direito em emulador)
-    if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
 
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== 'granted') {
-            console.log('Falha ao obter permissão para push notifications!');
-            return;
-        }
-
-        // Pega o token do Expo (que usa o Firebase por trás)
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-
-    } else {
-        console.log('É necessário usar um dispositivo físico para Push Notifications');
+    if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
     }
 
-    return token;
+    if (finalStatus !== 'granted') {
+        console.log('Falha ao obter permissão para push notifications!');
+        throw new Error('Permissão para notificações não concedida.');
+    }
+
+    // Push token do Expo só funciona corretamente em aparelho físico.
+    if (!Device.isDevice) {
+        console.log('É necessário usar um dispositivo físico para Push Notifications');
+        return;
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+        console.log('Project ID do EAS não encontrado para Push Notifications');
+        return;
+    }
+
+    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 }

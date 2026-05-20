@@ -13,6 +13,8 @@ import {
 } from "../components/Primitives";
 import { colors } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
+import { savePushToken } from "../services/api";
+import { registerForPushNotificationsAsync } from "../services/notifications";
 
 // ✅ 1. Define as propriedades que a tela precisa receber do AppShell
 interface SettingsScreenProps {
@@ -91,11 +93,23 @@ export function SettingsScreen({ token, dispenserId }: SettingsScreenProps) {
     }
   };
 
-  const handleToggleChange = (key: string, value: boolean) => {
+  const handleToggleChange = async (key: string, value: boolean) => {
     setToggleStates((prev) => ({
       ...prev,
       [key]: value,
     }));
+
+    if (!value) return;
+
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await savePushToken(token, pushToken);
+      }
+    } catch (error) {
+      console.error("Erro ao ativar notificações:", error);
+      Alert.alert("Notificações", "Não foi possível ativar as notificações neste aparelho.");
+    }
   };
 
   // Tela de carregamento enquanto busca os dados no Express

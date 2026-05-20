@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
+    process.env.EXPO_PUBLIC_API_BASE_URL ;
 
 // --- INTERFACES ---
 
@@ -95,6 +95,17 @@ export async function register(payload: {
   return request<AuthUser>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function savePushToken(
+    token: string,
+    pushToken: string
+): Promise<{ message: string }> {
+  return request<{ message: string }>("/auth/push-token", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ pushToken }),
   });
 }
 

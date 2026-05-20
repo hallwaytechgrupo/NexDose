@@ -16,4 +16,6 @@ router.put("/profile", authMiddleware, upload.single('avatar'), authController.u
 // A rota patch pode continuar aí sem problemas, caso precise dela no futuro
 router.patch('/avatar', authMiddleware, upload.single('avatar'), authController.updateAvatar);
 
+router.post("/push-token", authMiddleware, authController.savePushToken);
+
 export default router;

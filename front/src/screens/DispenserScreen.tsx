@@ -27,7 +27,7 @@ type Dispenser = {
   serial_number: string;
   name: string | null;
   status: string | null;
-  can_edit_medications: boolean; // Novo campo vindo do backend
+  can_edit_medications?: boolean; // Novo campo vindo do backend
 };
 
 export function DispenserScreen({
@@ -56,7 +56,7 @@ export function DispenserScreen({
 
       // Se houver dispositivos e nenhum selecionado, seleciona o primeiro e passa sua permissão
       if (data.length > 0 && !selectedDispenserId) {
-        onSelectDispenser(data[0].id, data[0].can_edit_medications);
+        onSelectDispenser(data[0].id, !!data[0].can_edit_medications);
       }
     } catch (e: any) {
       Alert.alert("Erro", e?.message || "Falha ao carregar dispositivos.");
@@ -82,7 +82,7 @@ export function DispenserScreen({
                   if (selectedDispenserId === id) {
                     // Se removeu o selecionado, seleciona o próximo ou limpa
                     if (next.length > 0) {
-                      onSelectDispenser(next[0].id, next[0].can_edit_medications);
+                      onSelectDispenser(next[0].id, !!next[0].can_edit_medications);
                     } else {
                       onSelectDispenser(null, false);
                     }
@@ -150,7 +150,7 @@ export function DispenserScreen({
                 return (
                     <SurfaceCard key={d.id} style={active ? styles.cardActive : undefined}>
                       <Pressable
-                          onPress={() => onSelectDispenser(d.id, d.can_edit_medications)}
+                          onPress={() => onSelectDispenser(d.id, !!d.can_edit_medications)}
                           style={styles.row}
                       >
                         <View style={styles.iconWrap}>

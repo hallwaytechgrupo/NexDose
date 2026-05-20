@@ -24,7 +24,7 @@ import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { TabKey } from "./data/mockData";
 import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
-import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers } from "./services/api";
+import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers, savePushToken } from "./services/api";
 import { registerForPushNotificationsAsync } from './services/notifications';
 
 type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser";
@@ -59,7 +59,7 @@ export function AppShell({
   const isOwnerOfCurrentDevice = currentDispenser && Number(currentDispenser.sponsor_id) === Number(user.id);
   const dispenserName = currentDispenser?.name || "Sem Dispositivo";
 
-  // Lógica de Inicialização Inteligente + Push Notifications
+  // Lógica de Inicialização Inteligente
   useEffect(() => {
     async function initializeApp() {
       try {
@@ -80,13 +80,6 @@ export function AppShell({
           setActiveScreen("dispenser");
         }
 
-        // 2. Registra o aparelho para Push Notifications
-        const pushToken = await registerForPushNotificationsAsync();
-        if (pushToken) {
-          console.log("🔥 Token de Notificação gerado com sucesso:", pushToken);
-          // TODO: Enviar esse token para o backend salvar no banco atrelado ao usuário (user.id)
-        }
-
       } catch (error) {
         console.error("Erro ao inicializar dispositivos:", error);
         setActiveScreen("dispenser");
@@ -94,6 +87,22 @@ export function AppShell({
     }
 
     initializeApp();
+  }, [token]);
+
+  useEffect(() => {
+    async function registerDeviceForNotifications() {
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken) {
+          console.log("Token de Notificação gerado com sucesso:", pushToken);
+          await savePushToken(token, pushToken);
+        }
+      } catch (error) {
+        console.error("Erro ao registrar notificações:", error);
+      }
+    }
+
+    registerDeviceForNotifications();
   }, [token]);
 
   // Controle do Botão Voltar (Android)

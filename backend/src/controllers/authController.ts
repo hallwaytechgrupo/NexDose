@@ -135,4 +135,26 @@ export const updateAvatar = async (req: Request, res: Response) => {
     } catch (error) {
         return res.status(500).json({ error: 'Erro ao salvar foto no banco.' });
     }
+
+
+};
+
+export const savePushToken = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { pushToken } = req.body;
+
+        if (typeof pushToken !== "string" || !pushToken.trim()) {
+            return res.status(400).json({ error: "Token de notificacao invalido." });
+        }
+
+        await pool.query(
+            "UPDATE users SET push_token = $1 WHERE id = $2",
+            [pushToken.trim(), userId]
+        );
+
+        return res.status(200).json({ message: "Token salvo!" });
+    } catch (error) {
+        return res.status(500).json({ error: "Erro interno." });
+    }
 };
