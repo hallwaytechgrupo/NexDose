@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -16,17 +17,21 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.7.0'
-          cache: 'npm' # Ativa o cache nativo do GitHub Actions para o npm
+          cache: 'npm'
+          # Aponta para o local correto do package-lock.json na subpasta
+          cache-dependency-path: front/package-lock.json
 
       - name: Install dependencies
+        # Garante que o npm install rode dentro do diretório front
         run: npm install
+        working-directory: front
 
       - name: Install EAS CLI
-       
         run: npm install -g eas-cli
 
       - name: Build with EAS
-  
+        # Garante que o build do EAS também seja disparado de dentro da pasta front
         run: eas build --platform android --non-interactive --profile preview
+        working-directory: front
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
