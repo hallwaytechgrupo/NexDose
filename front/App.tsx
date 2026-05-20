@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AppShell } from "./src/AppShell";
@@ -19,6 +19,26 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function restoreSession() {
+      try {
+        const storedToken = await SecureStore.getItemAsync("userToken");
+        const storedUser = await SecureStore.getItemAsync("authUser");
+
+        if (!storedToken || !storedUser) return;
+
+        const parsedUser = JSON.parse(storedUser) as AuthUser;
+        setToken(storedToken);
+        setAuthUser(parsedUser);
+        setScreen("app");
+      } catch (_err) {
+        // ignore: start at login
+      }
+    }
+
+    restoreSession();
+  }, []);
+
   const handleLogin = async (email: string, password: string) => {
     try {
       const response = await login({ email, password });
@@ -27,6 +47,7 @@ export default function App() {
 
       // Salva token e role para persistência
       await SecureStore.setItemAsync("userToken", response.token);
+      await SecureStore.setItemAsync("authUser", JSON.stringify(response.user));
       if (response.user.role) {
         await SecureStore.setItemAsync("userRole", response.user.role);
       }
@@ -57,6 +78,7 @@ export default function App() {
     name: string;
     email: string;
     password?: string;
+    avatarUri?: string | null;
   }) => {
     if (!token) {
       throw new Error("Sessão expirada. Faça login novamente.");
@@ -64,6 +86,7 @@ export default function App() {
 
     const response = await updateProfile(token, payload);
     setAuthUser(response.user);
+    await SecureStore.setItemAsync("authUser", JSON.stringify(response.user));
     return response;
   };
 
@@ -71,6 +94,7 @@ export default function App() {
     setAuthUser(null);
     setToken(null);
     SecureStore.deleteItemAsync("userToken").catch(() => null);
+    SecureStore.deleteItemAsync("authUser").catch(() => null);
     SecureStore.deleteItemAsync("userRole").catch(() => null);
     setScreen("login");
   };

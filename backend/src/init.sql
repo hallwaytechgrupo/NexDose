@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
                                      role VARCHAR(50) NOT NULL CHECK (role IN ('sponsor', 'caregiver', 'pending')),
                                      phone VARCHAR(50), -- ✅ ALTERAÇÃO: Campo adicionado (usado como 'Tel' no front)
                                      avatar_url TEXT,
+                                     push_token TEXT,
                                      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.15.8:3000";
+    process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.68.55.62:3000";
 
 // --- INTERFACES ---
 
@@ -10,7 +10,8 @@ export interface AuthUser {
   name: string;
   email: string;
   phone?: string;
-  role?: "sponsor" | "caregiver" | "pending"; // Ajustado para os novos nomes de role
+  role?: "sponsor" | "caregiver" | "pending";
+  avatar_url?: string | null; // Adicionado para suportar a foto de perfil
 }
 
 interface LoginResponse {
@@ -35,7 +36,6 @@ export interface Caregiver {
   can_edit_medications?: boolean;
 }
 
-// No seu arquivo api.ts, procure por 'export type Dispenser' e deixe assim:
 export type Dispenser = {
   id: number;
   serial_number: string;
@@ -86,9 +86,6 @@ export async function login(payload: {
   });
 }
 
-/**
- * Cadastro simplificado: sem Role (definida pelo sistema depois)
- */
 export async function register(payload: {
   name: string;
   email: string;
@@ -101,21 +98,56 @@ export async function register(payload: {
   });
 }
 
+// --- FUNÇÃO ATUALIZADA PARA O MULTER (FORM DATA) ---
 export async function updateProfile(
     token: string,
     payload: {
       name: string;
       email: string;
       password?: string;
+      avatarUri?: string | null; // Adicionado suporte para a URI local do Image Picker
     }
 ): Promise<UpdateProfileResponse> {
-  return request<UpdateProfileResponse>("/auth/profile", {
+
+  const formData = new FormData();
+  formData.append("name", payload.name);
+  formData.append("email", payload.email);
+
+  if (payload.password) {
+    formData.append("password", payload.password);
+  }
+
+  if (payload.avatarUri && !payload.avatarUri.startsWith("http")) {
+    const filename = payload.avatarUri.split("/").pop() || "avatar.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    formData.append("avatar", {
+      uri: payload.avatarUri,
+      name: filename,
+      type,
+    } as any);
+  }
+
+  // Fazemos o fetch direto aqui para não passar pelo helper 'request',
+  // pois o React Native precisa gerar o Content-Type de 'multipart/form-data' automaticamente.
+  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
+      // Não adicione o Content-Type aqui, o fetch faz isso sozinho quando o body é FormData
     },
-    body: JSON.stringify(payload),
+    body: formData,
   });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorMessage = data && data.error ? data.error : "Falha ao atualizar perfil.";
+    throw new Error(errorMessage);
+  }
+
+  return data as UpdateProfileResponse;
 }
 
 // --- FUNÇÕES DE MEDICAMENTOS ---
@@ -174,10 +206,6 @@ export async function deleteMedication(
 
 // --- FUNÇÕES DE CUIDADORES ---
 
-/**
- * Adiciona um cuidador vinculado a um dispenser específico.
- * Implementado conforme sua solicitação de parâmetros posicionais.
- */
 export async function addCaregiver(
     token: string,
     dispenserId: number,

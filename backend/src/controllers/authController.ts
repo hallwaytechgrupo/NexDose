@@ -67,7 +67,8 @@ export const login = async (req: Request, res: Response) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role, // ✅ REMOVIDO: Agora entrega puramente 'sponsor' ou 'caregiver'
+                role: user.role, // 'sponsor' ou 'caregiver'
+                avatar_url: user.avatar_url ?? null,
             },
         });
     } catch (error) {
@@ -78,19 +79,32 @@ export const login = async (req: Request, res: Response) => {
 export const updateProfile = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { name, email, password } = req.body;
+    const avatarUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     try {
         const normalizedPassword = typeof password === "string" && password.trim() ? password.trim() : null;
 
-        const updatedUser = normalizedPassword
-            ? await pool.query(
-                "UPDATE users SET name = $1, email = $2, password_hash = $3 WHERE id = $4 RETURNING id, name, email, role",
-                [name, email, await bcrypt.hash(normalizedPassword, 10), userId]
-            )
-            : await pool.query(
-                "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email, role",
-                [name, email, userId]
-            );
+        // Monta query dinamicamente para incluir avatar e/ou senha quando vierem na request.
+        let query = "UPDATE users SET name = $1, email = $2";
+        const values: any[] = [name, email];
+        let paramIndex = 3;
+
+        if (avatarUrl) {
+            query += `, avatar_url = $${paramIndex}`;
+            values.push(avatarUrl);
+            paramIndex++;
+        }
+
+        if (normalizedPassword) {
+            query += `, password_hash = $${paramIndex}`;
+            values.push(await bcrypt.hash(normalizedPassword, 10));
+            paramIndex++;
+        }
+
+        query += ` WHERE id = $${paramIndex} RETURNING id, name, email, role, avatar_url`;
+        values.push(userId);
+
+        const updatedUser = await pool.query(query, values);
 
         if (updatedUser.rows.length === 0) {
             return res.status(404).json({ error: "Usuário não encontrado." });
@@ -105,7 +119,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 
 export const updateAvatar = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
-    const avatar_url = req.file?.filename;
+    const avatar_url = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!avatar_url) {
         return res.status(400).json({ error: 'Arquivo não enviado.' });

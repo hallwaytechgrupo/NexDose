@@ -10,6 +10,7 @@ import dispenserMedicationRoutes from './routes/dispenserMedicationRoutes';
 import caregiverRoutes from './routes/caregiverRoutes';
 import dispenserRoutes from './routes/dispenserRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
+import userRoutes from './routes/userRoute';
 
 dotenv.config();
 
@@ -47,6 +48,11 @@ app.use('/api/dispensers/:dispenserId/medications', dispenserMedicationRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/dispensers', dispenserRoutes);
 app.use('/api/farmacias', pharmacyRoutes);
+app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
+
+app.use(userRoutes);
+
+app.listen(3000, () => console.log("🚀 Backend rodando na porta 3000"));
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 

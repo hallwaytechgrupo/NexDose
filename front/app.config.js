@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   expo: {
     name: "NexDose",
-    icon: "./assets/ndIcon.png",
+    icon: "./src/assets/ndIcon.png",
     slug: "nexdose-mobile",
     scheme: "nexdose",
     version: "1.0.0",
@@ -16,8 +16,9 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/ndIcon.png",
-        backgroundColor: "#FFFFFF"
+        foregroundImage: "./src/assets/img/ndIcon.png",
+        backgroundColor: "#FFFFFF",
+        googleServicesFile: "./google-services.json",
       },
       package: "com.nexdose.mobile",
       softwareKeyboardLayoutMode: "pan",
@@ -32,7 +33,12 @@ export default {
       bundler: "metro"
     },
     plugins: [
-      
+      [
+        "expo-notifications",
+        {
+          icon: "./src/assets/img/ndIcon.png",
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true

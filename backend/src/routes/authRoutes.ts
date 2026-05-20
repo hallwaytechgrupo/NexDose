@@ -10,7 +10,10 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 
 // Rotas Privadas (Precisam do token via middleware)
-router.put("/profile", authMiddleware, authController.updateProfile);
+// 👇 Aqui está a mágica! Adicionamos o upload.single('avatar') antes do controller
+router.put("/profile", authMiddleware, upload.single('avatar'), authController.updateProfile);
 
+// A rota patch pode continuar aí sem problemas, caso precise dela no futuro
 router.patch('/avatar', authMiddleware, upload.single('avatar'), authController.updateAvatar);
+
 export default router;

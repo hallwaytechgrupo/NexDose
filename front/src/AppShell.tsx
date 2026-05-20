@@ -7,6 +7,7 @@ import {
   Text,
   View,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,7 +24,8 @@ import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { TabKey } from "./data/mockData";
 import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
-import { AuthUser, UpdateProfileResponse, getDispensers } from "./services/api";
+import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers } from "./services/api";
+import { registerForPushNotificationsAsync } from './services/notifications';
 
 type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser";
 
@@ -38,6 +40,7 @@ export function AppShell({
     name: string;
     email: string;
     password?: string;
+    avatarUri?: string | null;
   }) => Promise<UpdateProfileResponse>;
   user: AuthUser;
   token: string;
@@ -51,15 +54,16 @@ export function AppShell({
   const [selectedDispenserId, setSelectedDispenserId] = useState<number | null>(null);
   const [canEditMedications, setCanEditMedications] = useState<boolean>(false);
 
-  // ✅ CORREÇÃO 1: Forçando Number() para evitar que string vs number quebre a lógica de dono
+  // Forçando Number() para evitar que string vs number quebre a lógica de dono
   const currentDispenser = dispensersList.find(d => Number(d.id) === Number(selectedDispenserId));
   const isOwnerOfCurrentDevice = currentDispenser && Number(currentDispenser.sponsor_id) === Number(user.id);
   const dispenserName = currentDispenser?.name || "Sem Dispositivo";
 
-  // Lógica de Inicialização Inteligente
+  // Lógica de Inicialização Inteligente + Push Notifications
   useEffect(() => {
     async function initializeApp() {
       try {
+        // 1. Busca os dispensers
         const dispensers = await getDispensers(token);
         setDispensersList(dispensers);
 
@@ -67,7 +71,6 @@ export function AppShell({
           const device = dispensers[0];
           setSelectedDispenserId(device.id);
 
-          // ✅ CORREÇÃO 2: Forçando Number() na inicialização do app
           const isOwner = Number(device.sponsor_id) === Number(user.id);
           const hasPermission = isOwner || !!device.can_edit_medications;
 
@@ -76,6 +79,14 @@ export function AppShell({
         } else {
           setActiveScreen("dispenser");
         }
+
+        // 2. Registra o aparelho para Push Notifications
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken) {
+          console.log("🔥 Token de Notificação gerado com sucesso:", pushToken);
+          // TODO: Enviar esse token para o backend salvar no banco atrelado ao usuário (user.id)
+        }
+
       } catch (error) {
         console.error("Erro ao inicializar dispositivos:", error);
         setActiveScreen("dispenser");
@@ -143,8 +154,8 @@ export function AppShell({
             {activeScreen === "home" && (
                 <HomeScreen
                     onNavigate={handleNavigation}
-                    token={token}                      // 👈 Injeta o token real vindo do login
-                    dispenserId={selectedDispenserId}  // 👈 Injeta o ID do dispenser ativo
+                    token={token}
+                    dispenserId={selectedDispenserId}
                 />
             )}
             {activeScreen === "medications" && (
@@ -181,8 +192,6 @@ export function AppShell({
                       setSelectedDispenserId(id);
 
                       try {
-                        // ✅ CORREÇÃO 3: Quando o usuário escolhe ou adiciona um dispositivo,
-                        // re-buscamos a lista na hora para o AppShell incluir o novo aparelho no estado
                         const freshDispensers = await getDispensers(token);
                         setDispensersList(freshDispensers);
 
@@ -191,7 +200,6 @@ export function AppShell({
 
                         setCanEditMedications(!!(isOwner || canEdit));
                       } catch (err) {
-                        // Fallback de segurança caso a rede falhe
                         const selectedDevice = dispensersList.find(d => Number(d.id) === Number(id));
                         const isOwner = selectedDevice && Number(selectedDevice.sponsor_id) === Number(user.id);
                         setCanEditMedications(!!(isOwner || canEdit));
@@ -239,14 +247,26 @@ export function AppShell({
 function TopBar({ activeTab, onBackPress, onNotificationPress, onAvatarPress, user, dispenserName }: any) {
   const isSettings = activeTab === "settings";
 
+  // Pegando a base URL ou usando o fallback local
+  const baseUrl = getApiBaseUrl();
+
   return (
       <View style={styles.topBar}>
         <Pressable style={styles.profileBlock} onPress={isSettings ? onBackPress : onAvatarPress}>
           <View style={styles.avatar}>
-            <Feather name={isSettings ? "arrow-left" : "user"} size={20} color={colors.primary} />
+            {isSettings ? (
+                <Feather name="arrow-left" size={20} color={colors.primary} />
+            ) : user?.avatar_url ? (
+                <Image
+                    source={{ uri: `${baseUrl}${user.avatar_url}` }}
+                    style={{ width: "100%", height: "100%", borderRadius: 100 }}
+                />
+            ) : (
+                <Feather name="user" size={20} color={colors.primary} />
+            )}
           </View>
           <View style={styles.profileCopy}>
-            <Text style={styles.topTitle}>{isSettings ? "Configurações" : `Olá, ${user.name}!`}</Text>
+            <Text style={styles.topTitle}>{isSettings ? "Configurações" : `Olá, ${user?.name}!`}</Text>
             {!isSettings && (
                 <View style={styles.statusRow}>
                   <Text style={styles.statusPill}>{`Dispositivo: ${dispenserName}`}</Text>
