@@ -22,7 +22,7 @@ import { DispenserScreen } from "./screens/DispenserScreen";
 import { UserMenuScreen } from "./screens/UserMenuScreen";
 import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { TabKey } from "./data/mockData";
-import { GradientButton } from "./components/Primitives";
+import { GradientButton, ButtonRow } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
 import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers, savePushToken } from "./services/api";
 import { registerForPushNotificationsAsync } from './services/notifications';
@@ -359,10 +359,13 @@ function LogoutModal({ visible, onLogout, onContinue }: any) {
           <View style={styles.logoutModal}>
             <Text style={styles.logoutTitle}>Sair do app?</Text>
             <Text style={styles.logoutMessage}>Tem certeza que deseja sair?</Text>
-            <View style={styles.logoutButtonContainer}>
-              <GradientButton title="Sair" onPress={onLogout} variant="danger" />
+
+            {/* Trocamos o ButtonRow por uma View em coluna com um espaçamento de 12px */}
+            <View style={{ flexDirection: 'column', gap: 12 }}>
               <GradientButton title="Cancelar" onPress={onContinue} />
+              <GradientButton title="Sair" onPress={onLogout} variant="danger" />
             </View>
+
           </View>
         </Pressable>
       </Modal>
@@ -411,5 +414,4 @@ const styles = StyleSheet.create({
   logoutModal: { backgroundColor: "white", borderRadius: radius.lg, padding: 24, width: "85%", alignSelf: "center" },
   logoutTitle: { fontSize: 20, fontWeight: "800", marginBottom: 8 },
   logoutMessage: { fontSize: 14, color: colors.textMuted, marginBottom: 24 },
-  logoutButtonContainer: { gap: 12 }
 });
