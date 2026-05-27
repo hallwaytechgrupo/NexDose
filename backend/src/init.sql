@@ -39,6 +39,34 @@ CREATE TABLE IF NOT EXISTS dispensers (
 );
 
 -- ---
+-- Tabela de Configuracoes do Dispenser (Preferencias/Responsavel)
+-- ---
+CREATE TABLE IF NOT EXISTS dispenser_settings (
+                                                  id SERIAL PRIMARY KEY,
+                                                  dispenser_id INTEGER NOT NULL UNIQUE REFERENCES dispensers(id) ON DELETE CASCADE,
+                                                  responsable_name VARCHAR(255) DEFAULT '',
+                                                  responsable_phone VARCHAR(50) DEFAULT '',
+                                                  responsable_email VARCHAR(255) DEFAULT '',
+                                                  preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+                                                  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ---
+-- Preferencias de notificacao por usuario e por dispositivo
+-- Cada usuario decide o que quer receber para cada dispenser.
+-- ---
+CREATE TABLE IF NOT EXISTS user_dispenser_notification_prefs (
+                                                                 id SERIAL PRIMARY KEY,
+                                                                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                                                 dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
+                                                                 preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+                                                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                                                 UNIQUE (user_id, dispenser_id)
+);
+
+-- ---
 -- Tabela de Acesso ao Dispositivo (Compartilhamento com Cuidadores)
 -- ---
 CREATE TABLE IF NOT EXISTS device_access (

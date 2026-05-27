@@ -3,7 +3,8 @@ import {
   getMedications,
   createMedication,
   updateMedication,
-  deleteMedication
+  deleteMedication,
+  getHistory
 } from '../controllers/medicationController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
@@ -12,9 +13,13 @@ const router = Router();
 // Aplica o middleware de autenticação para TODAS as rotas abaixo
 router.use(authMiddleware);
 
-router.get('/', getMedications);
-router.post('/', createMedication);
-router.put('/:id', updateMedication);
-router.delete('/:id', deleteMedication);
+// Rotas de Medicamentos
+router.get('/:dispenserId/medications', getMedications);
+router.post('/:dispenserId/medications', createMedication);
+router.put('/:dispenserId/medications/:id', updateMedication);
+router.delete('/:dispenserId/medications/:id', deleteMedication);
+
+// Rota de Histórico
+router.get('/:dispenserId/history', getHistory);
 
 export default router;

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, Modal, FlatList, Pressable, StyleSheet,
   ScrollView, Alert, ActivityIndicator, Switch
 } from 'react-native';
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AppScreen,
   Chip,
@@ -27,7 +28,7 @@ interface MedicationsScreenProps {
   canEdit: boolean;
 }
 
-// ✅ A FUNÇÃO QUE VOCÊ QUERIA: Calcula os 4 horários no celular avançando o relógio automaticamente
+// ✅ A FUNÇÃO QUE VOCÊ QUERIA: Calcula os 4 horários (MANTIDA INTACTA)
 function getNextFourDoses(nextDoseStr: string, intervalHours: number): string[] {
   if (!nextDoseStr || nextDoseStr === '--:--') return [];
 
@@ -38,16 +39,12 @@ function getNextFourDoses(nextDoseStr: string, intervalHours: number): string[] 
   const now = new Date();
   const doseDate = new Date();
   doseDate.setHours(baseHour, baseMinute, 0, 0);
-
-  // Retrocede 24 horas para garantir o encaixe perfeito no fuso e ciclo correto
   doseDate.setDate(doseDate.getDate() - 1);
 
-  // Avança de intervalo em intervalo ATÉ passar do horário atual de agora
   while (doseDate <= now) {
     doseDate.setHours(doseDate.getHours() + intervalHours);
   }
 
-  // Agora gera a sequência dos próximos 4 horários futuros
   const hoursList: string[] = [];
   const tempDate = new Date(doseDate);
 
@@ -67,12 +64,11 @@ export default function MedicationsScreen({
                                             dispenserId,
                                             canEdit,
                                           }: MedicationsScreenProps) {
-  // --- ESTADOS ---
-  const [medicationsList, setMedicationsList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  // Instância do QueryClient para podermos forçar atualizações
+  const queryClient = useQueryClient();
 
-  // --- ESTADOS DO FORMULÁRIO COMPLETO ---
+  // --- ESTADOS DO FORMULÁRIO (MANTIDOS! O usuário precisa deles para digitar) ---
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [medicationName, setMedicationName] = useState('');
   const [dosage, setDosage] = useState('');
@@ -82,23 +78,14 @@ export default function MedicationsScreen({
   const [showPicker, setShowPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [selectedInterval, setSelectedInterval] = useState(8);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchMedications();
-  }, [token, dispenserId]);
-
-  const fetchMedications = async () => {
-    try {
-      setIsLoading(true);
-      if (!dispenserId) {
-        setMedicationsList([]);
-        return;
-      }
-
-      const data = await getMedications(token, dispenserId);
-
-      const formattedData = data.map((med: any) => ({
+  // 1. A BUSCA DE DADOS (Substitui o useEffect e o useState da lista)
+  const { data: medicationsList = [], isLoading } = useQuery({
+    queryKey: ['medications', dispenserId],
+    enabled: !!dispenserId && !!token,
+    queryFn: async () => {
+      const data = await getMedications(token, dispenserId!);
+      return data.map((med: any) => ({
         id: String(med.id),
         name: med.name,
         dosage: med.dosage || '',
@@ -107,16 +94,42 @@ export default function MedicationsScreen({
         endDate: med.end_date || med.endDate,
         isContinuous: med.is_continuous !== undefined ? med.is_continuous : med.isContinuous,
       }));
-
-      setMedicationsList(formattedData);
-    } catch (error) {
-      console.error("Erro ao buscar medicamentos:", error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  });
 
-  // --- FUNÇÕES DE AÇÃO ---
+  // 2. MUTAÇÕES (Substituem o setIsSubmitting e automatizam o recarregamento da lista)
+  const saveMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      if (editingId) {
+        return await updateMedication(token, dispenserId!, editingId, payload);
+      } else {
+        return await createMedication(token, dispenserId!, payload);
+      }
+    },
+    onSuccess: () => {
+      // Magia pura: Invalida o cache e faz a lista recarregar sozinha na tela!
+      queryClient.invalidateQueries({ queryKey: ['medications', dispenserId] });
+      // Se a Home estiver usando a mesma queryKey, ela também vai atualizar o relógio!
+      queryClient.invalidateQueries({ queryKey: ['nextMedication', dispenserId] });
+      setIsModalVisible(false);
+    },
+    onError: (error: any) => {
+      Alert.alert("Erro", error.message || "Falha ao salvar.");
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await deleteMedication(token, dispenserId!, id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medications', dispenserId] });
+      queryClient.invalidateQueries({ queryKey: ['nextMedication', dispenserId] });
+      setIsModalVisible(false);
+    }
+  });
+
+  // --- FUNÇÕES DE AÇÃO PARA ABRIR O MODAL ---
   const handleOpenCreate = () => {
     if (!canEdit) {
       Alert.alert("Acesso Restrito", "Você não tem permissão para adicionar medicamentos.");
@@ -149,47 +162,30 @@ export default function MedicationsScreen({
     setIsModalVisible(true);
   };
 
-  const handleSaveMedication = async () => {
+  const handleSaveMedication = () => {
     if (!dispenserId) return;
     if (!medicationName || !dosage) {
       Alert.alert("Erro", "Nome e dosagem são obrigatórios.");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        name: medicationName,
-        dosage: dosage,
-        startDate: startDate.toISOString(),
-        intervalHours: selectedInterval,
-        isContinuous: isContinuous,
-        endDate: isContinuous ? null : endDate.toISOString(),
-      };
+    const payload = {
+      name: medicationName,
+      dosage: dosage,
+      startDate: startDate.toISOString(),
+      intervalHours: selectedInterval,
+      isContinuous: isContinuous,
+      endDate: isContinuous ? null : endDate.toISOString(),
+    };
 
-      if (editingId) {
-        await updateMedication(token, dispenserId, editingId, payload);
-      } else {
-        await createMedication(token, dispenserId, payload);
-      }
-      await fetchMedications();
-      setIsModalVisible(false);
-    } catch (error: any) {
-      Alert.alert("Erro", error.message || "Falha ao salvar.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    saveMutation.mutate(payload);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if(!editingId || !dispenserId) return;
     Alert.alert("Excluir", "Deseja remover este medicamento?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Deletar", style: "destructive", onPress: async () => {
-          await deleteMedication(token, dispenserId, editingId);
-          await fetchMedications();
-          setIsModalVisible(false);
-        }}
+      { text: "Deletar", style: "destructive", onPress: () => deleteMutation.mutate(editingId) }
     ]);
   };
 
@@ -207,8 +203,6 @@ export default function MedicationsScreen({
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => {
                   const isExpired = item.endDate && new Date(item.endDate) < new Date();
-
-                  // ✅ Executa a função aqui no front-end para gerar os 4 tempos dinâmicos
                   const nextHours = getNextFourDoses(item.nextDose, item.interval);
 
                   return (
@@ -220,7 +214,6 @@ export default function MedicationsScreen({
                               <Text style={styles.medInfo}>Intervalo: de {item.interval}h em {item.interval}h</Text>
                             </View>
 
-                            {/* ✅ O MAP que renderiza os quadradinhos de horários na horizontal */}
                             {nextHours.length > 0 && (
                                 <View style={styles.scheduleRow}>
                                   {nextHours.map((time, index) => (
@@ -258,7 +251,11 @@ export default function MedicationsScreen({
                 <Text style={styles.modalTitle}>{editingId ? "Editar" : "Novo Medicamento"}</Text>
                 {editingId && canEdit && (
                     <Pressable onPress={handleDelete} style={styles.deleteIconBtn}>
-                      <Feather name="trash-2" size={20} color={colors.error} />
+                      {deleteMutation.isPending ? (
+                          <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                          <Feather name="trash-2" size={20} color={colors.error} />
+                      )}
                     </Pressable>
                 )}
               </View>
@@ -318,9 +315,16 @@ export default function MedicationsScreen({
                 </View>
               </SurfaceCard>
 
-              <View style={styles.modalButtons}>
-                {canEdit && <GradientButton title={isSubmitting ? "Salvando..." : "Salvar"} onPress={handleSaveMedication} />}
+              <View style={{...styles.modalButtons}}>
                 <GradientButton title="Cancelar" variant="danger" onPress={() => setIsModalVisible(false)} />
+                {canEdit && (
+                    <GradientButton
+                        title={saveMutation.isPending ? "Salvando..." : "Salvar"}
+                        onPress={handleSaveMedication}
+                        // Desabilita o botão para evitar cliques duplos
+                        disabled={saveMutation.isPending}
+                    />
+                )}
               </View>
             </ScrollView>
           </View>
@@ -336,14 +340,11 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   medName: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
-
-  // Estilos da fileira de crachás
   scheduleRow: { flexDirection: "row", gap: 6, marginTop: 6 },
   timeBadge: { backgroundColor: "#F3F4F6", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#E5E7EB" },
   timeBadgeText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
   nextTimeBadge: { backgroundColor: "rgba(111,251,133,0.2)", borderColor: colors.secondary || "#6FFB85" },
   nextTimeBadgeText: { color: "#2E7D32", fontWeight: "800" },
-
   tagRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   intervalTag: { backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
   continuousTag: { backgroundColor: '#E3F2FD', color: '#1976D2', paddingHorizontal: 8, borderRadius: 4, fontSize: 12, fontWeight: 'bold' },
@@ -352,8 +353,8 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', marginTop: 40, color: colors.textMuted },
   modalContainer: { flex: 1, padding: 20, backgroundColor: colors.background },
   modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.primary },
-  deleteIconBtn: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: radius.full },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.primary, marginTop:50 },
+  deleteIconBtn: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: radius.full, marginTop: 50 },
   contentBlock: { gap: 16 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   subLabel: { fontSize: 12, color: colors.textMuted },

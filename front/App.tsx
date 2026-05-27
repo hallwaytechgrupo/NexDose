@@ -12,11 +12,13 @@ import {
 } from "./src/services/api";
 import * as SecureStore from "expo-secure-store";
 import { initializeApp } from "firebase/app";
-
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 
 type Screen = "login" | "createAccount" | "app";
+
+const queryClient = new QueryClient();
+
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
@@ -136,7 +138,10 @@ export default function App() {
   return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        {renderScreen()}
+        {/* Adicione o Provider abraçando o renderScreen */}
+        <QueryClientProvider client={queryClient}>
+          {renderScreen()}
+        </QueryClientProvider>
       </SafeAreaProvider>
   );
 }

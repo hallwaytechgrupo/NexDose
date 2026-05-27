@@ -26,8 +26,9 @@ import { GradientButton } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
 import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers, savePushToken } from "./services/api";
 import { registerForPushNotificationsAsync } from './services/notifications';
+import { HelpScreen} from "./screens/HelpScreen";
 
-type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser";
+type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser" | "help";
 
 export function AppShell({
                            onLogout,
@@ -175,7 +176,12 @@ export function AppShell({
                 />
             )}
 
-            {activeScreen === "history" && <HistoryScreen />}
+            {activeScreen === "history" && (
+                <HistoryScreen
+                    token={token}
+                    dispenserId={selectedDispenserId}
+                />
+            )}
             {activeScreen === "settings" && (
                 <SettingsScreen
                     token={token}
@@ -229,6 +235,10 @@ export function AppShell({
                     onProfileUpdate={onProfileUpdate}
                     user={user}
                 />
+            )}
+
+            {activeScreen === "help" && (
+                <HelpScreen onNavigate={handleNavigation} />
             )}
           </View>
 
@@ -327,7 +337,7 @@ function BottomTabs({ activeTab, onChange }: any) {
 function NotificationModal({ visible, onClose }: any) {
   return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.notificationModalContainer} onPress={onClose}>
           <View style={styles.notificationModal}>
             <View style={styles.notificationHeader}>
               <Text style={styles.notificationTitle}>Notificações</Text>
@@ -350,8 +360,8 @@ function LogoutModal({ visible, onLogout, onContinue }: any) {
             <Text style={styles.logoutTitle}>Sair do app?</Text>
             <Text style={styles.logoutMessage}>Tem certeza que deseja sair?</Text>
             <View style={styles.logoutButtonContainer}>
-              <GradientButton title="Continuar" onPress={onContinue} />
               <GradientButton title="Sair" onPress={onLogout} variant="danger" />
+              <GradientButton title="Cancelar" onPress={onContinue} />
             </View>
           </View>
         </Pressable>
@@ -380,7 +390,20 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 12, fontWeight: "600", color: colors.text },
   tabTextActive: { color: "white", fontWeight: "800" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "center", paddingHorizontal: 16 },
-  notificationModal: { backgroundColor: "white", borderRadius: radius.lg, overflow: "hidden" },
+  notificationModalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  },
+  notificationModal: {
+    position: "absolute",
+    top: 90,
+    right: 20,
+    width: 300,
+    backgroundColor: "white",
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    ...shadow.card,
+  },
   notificationHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
   notificationTitle: { fontSize: 18, fontWeight: "800" },
   notificationContent: { padding: 16 },

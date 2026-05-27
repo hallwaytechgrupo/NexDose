@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import {View, Text, StyleSheet, Pressable, Image} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, radius } from '../theme/tokens';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type UserMenuScreenProps = {
-  onNavigate: (screen: 'settings' | 'home' | 'editProfile') => void;
+  onNavigate: (screen: 'settings' | 'home' | 'editProfile' | 'help') => void;
   onLogout: () => void;
 };
 
@@ -24,7 +24,7 @@ export function UserMenuScreen({ onNavigate, onLogout }: UserMenuScreenProps) {
     {
       icon: 'help-circle' as const,
       label: 'Ajuda',
-      onPress: () => { /* TODO: Implementar tela de Ajuda */ },
+      onPress: () => onNavigate("help"),
     },
     {
       icon: 'log-out' as const,
@@ -38,10 +38,12 @@ export function UserMenuScreen({ onNavigate, onLogout }: UserMenuScreenProps) {
     <SafeAreaView style={styles.container}>
         <View style={styles.header}>
             <Pressable onPress={() => onNavigate('home')}>
-                <Feather name="arrow-left" size={24} color={colors.text} />
+                <View style={styles.backButton}>
+                    <Feather name="arrow-left" size={20} color={colors.primary} />
+                </View>
             </Pressable>
             <Text style={styles.title}>Menu</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 42 }} />
         </View>
         <View style={styles.menuContainer}>
             {menuItems.map((item, index) => (
@@ -52,9 +54,21 @@ export function UserMenuScreen({ onNavigate, onLogout }: UserMenuScreenProps) {
             </Pressable>
             ))}
         </View>
+        <View style={styles.footer}>
+          <Image
+            source={require("../assets/img/logoHallway.png")}
+            style={styles.logo}
+          />
+          <Text style={styles.footerText}>Developed by HallWayTech</Text>
+        </View>
     </SafeAreaView>
+
+
   );
+
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -66,9 +80,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: 20,
@@ -91,5 +113,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+  },
+  footer: {
+    marginTop: 350,
+    flexDirection: 'row', // Alinha os itens na horizontal (lado a lado)
+    alignItems: 'center', // Alinha verticalmente o texto com o centro da imagem
+    justifyContent: 'center', // Centraliza o bloco todo no rodapé
+    paddingVertical: 15,      // Espaçamento interno em cima e embaixo
+    borderTopWidth: 1,        // Opcional: uma linha fina para separar o rodapé
+    borderTopColor: '#eeeeee',
+    backgroundColor: '#ffffff',
+  },
+  logo: {
+    width: 30,               // Ajuste o tamanho conforme necessário
+    height: 30,
+    resizeMode: 'contain',
+  },
+  footerText: {
+    marginLeft: 10,          // Espaçamento entre o logo e o texto
+    fontSize: 14,
+    color: '#333333',
+    fontWeight: '500',
   },
 });

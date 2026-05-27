@@ -174,7 +174,9 @@ export function EditProfileScreen({
       <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
         <View style={styles.header}>
           <Pressable onPress={() => onNavigate("userMenu")}>
-            <Feather name="arrow-left" size={24} color={colors.text} />
+            <View style={styles.backButton}>
+              <Feather name="arrow-left" size={20} color={colors.primary} />
+            </View>
           </Pressable>
           <Text style={styles.title}>Editar Perfil</Text>
           <View style={styles.headerSpacer} />
@@ -258,7 +260,7 @@ export function EditProfileScreen({
 
           <View style={styles.footer}>
             <GradientButton
-                title={isSubmitting ? "Salvando..." : "Salvar Alteracoes"}
+                title="Salvar Alteracoes"
                 onPress={handleSave}
             />
             <GradientButton
@@ -329,9 +331,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12, // Ajustado para alinhar com o botão
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: 20,
@@ -339,7 +349,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   headerSpacer: {
-    width: 24,
+    width: 42, // Aumentado para equilibrar com o botão
   },
   content: {
     flex: 1,

@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AppScreen,
   GradientButton,
@@ -27,7 +28,7 @@ type Dispenser = {
   serial_number: string;
   name: string | null;
   status: string | null;
-  can_edit_medications?: boolean; // Novo campo vindo do backend
+  can_edit_medications?: boolean;
 };
 
 export function DispenserScreen({
@@ -37,35 +38,54 @@ export function DispenserScreen({
                                 }: {
   token: string;
   selectedDispenserId: number | null;
-  onSelectDispenser: (id: number | null, canEdit: boolean) => void; // Assinatura atualizada
+  onSelectDispenser: (id: number | null, canEdit: boolean) => void;
 }) {
-  const [dispensers, setDispensers] = useState<Dispenser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
+  const queryClient = useQueryClient();
+  const [isAdding, setIsAdding] = useState(false); // Estado de UI mantido
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const load = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getDispensers(token);
-      setDispensers(data);
-
-      // Se houver dispositivos e nenhum selecionado, seleciona o primeiro e passa sua permissão
-      if (data.length > 0 && !selectedDispenserId) {
-        onSelectDispenser(data[0].id, !!data[0].can_edit_medications);
-      }
-    } catch (e: any) {
-      Alert.alert("Erro", e?.message || "Falha ao carregar dispositivos.");
-    } finally {
-      setIsLoading(false);
+  // 1. A FERRARI: Busca, Cache e Monitoramento em tempo real do Hardware
+  const { data: dispensers = [], isLoading } = useQuery({
+    queryKey: ['dispensers'],
+    enabled: !!token,
+    refetchInterval: 30000, // Atualiza o status de online/bateria a cada 30 segundos silenciosamente
+    queryFn: async () => {
+      return await getDispensers(token);
     }
-  };
+  });
 
-  const handleRemove = async (id: number) => {
+  // 2. REGRA DE NEGÓCIO: Seleciona o primeiro dispositivo automaticamente se não houver nenhum selecionado
+  useEffect(() => {
+    if (dispensers.length > 0 && !selectedDispenserId) {
+      onSelectDispenser(dispensers[0].id, !!dispensers[0].can_edit_medications);
+    }
+  }, [dispensers, selectedDispenserId]);
+
+  // 3. MUTAÇÃO DE REMOÇÃO
+  const removeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await removeDispenser(token, id);
+      return id; // Retorna o ID deletado para usarmos no onSuccess
+    },
+    onSuccess: (deletedId) => {
+      // Força a atualização da lista
+      queryClient.invalidateQueries({ queryKey: ['dispensers'] });
+
+      // Lógica para selecionar o próximo dispositivo ou limpar a tela
+      const remaining = dispensers.filter((d) => d.id !== deletedId);
+      if (selectedDispenserId === deletedId) {
+        if (remaining.length > 0) {
+          onSelectDispenser(remaining[0].id, !!remaining[0].can_edit_medications);
+        } else {
+          onSelectDispenser(null, false);
+        }
+      }
+    },
+    onError: (e: any) => {
+      Alert.alert("Erro", e?.message || "Não foi possível remover o dispositivo.");
+    }
+  });
+
+  const handleRemove = (id: number) => {
     Alert.alert(
         "Remover dispositivo",
         "Deseja desassociar este dispositivo da sua conta?",
@@ -74,25 +94,7 @@ export function DispenserScreen({
           {
             text: "Remover",
             style: "destructive",
-            onPress: async () => {
-              try {
-                await removeDispenser(token, id);
-                setDispensers((prev) => {
-                  const next = prev.filter((d) => d.id !== id);
-                  if (selectedDispenserId === id) {
-                    // Se removeu o selecionado, seleciona o próximo ou limpa
-                    if (next.length > 0) {
-                      onSelectDispenser(next[0].id, !!next[0].can_edit_medications);
-                    } else {
-                      onSelectDispenser(null, false);
-                    }
-                  }
-                  return next;
-                });
-              } catch (e: any) {
-                Alert.alert("Erro", e?.message || "Nao foi possivel remover.");
-              }
-            },
+            onPress: () => removeMutation.mutate(id),
           },
         ]
     );
@@ -103,7 +105,7 @@ export function DispenserScreen({
         <AppScreen useScrollView={false}>
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando dispositivos...</Text>
+            <Text style={styles.loadingText}>Conectando aos dispositivos...</Text>
           </View>
         </AppScreen>
     );
@@ -114,10 +116,10 @@ export function DispenserScreen({
         <AddDispenserForm
             token={token}
             onCancel={() => setIsAdding(false)}
-            onCreated={async (created) => {
+            onCreated={(created) => {
               setIsAdding(false);
-              await load();
-              // Dispositivo recém-criado pelo dono sempre tem can_edit = true
+              // Invalida a busca atual para puxar o novo aparelho e já seleciona ele
+              queryClient.invalidateQueries({ queryKey: ['dispensers'] });
               onSelectDispenser(created.id, true);
             }}
         />
@@ -141,7 +143,7 @@ export function DispenserScreen({
                 </View>
                 <Text style={styles.emptyTitle}>Nenhum dispositivo associado</Text>
                 <Text style={styles.emptySubtitle}>
-                  Adicione pelo numero de serie do dispenser.
+                  Adicione pelo número de série do dispenser.
                 </Text>
               </View>
           ) : (
@@ -167,11 +169,14 @@ export function DispenserScreen({
                             <Text style={[styles.deviceMeta, active ? { color: "rgba(255,255,255,0.85)" } : undefined]}>
                               Status: {d.status || "offline"}
                             </Text>
-
                           </View>
                         </View>
                         <Pressable onPress={() => handleRemove(d.id)} style={styles.removeBtn}>
-                          <Feather name="trash-2" size={18} color={active ? colors.white : colors.textMuted} />
+                          {removeMutation.isPending && removeMutation.variables === d.id ? (
+                              <ActivityIndicator size="small" color={active ? colors.white : colors.error} />
+                          ) : (
+                              <Feather name="trash-2" size={18} color={active ? colors.white : colors.textMuted} />
+                          )}
                         </Pressable>
                       </Pressable>
                     </SurfaceCard>
@@ -185,6 +190,9 @@ export function DispenserScreen({
   );
 }
 
+// --------------------------------------------------------
+// COMPONENTE DE FORMULÁRIO SEPARADO E REFATORADO
+// --------------------------------------------------------
 function AddDispenserForm({
                             token,
                             onCancel,
@@ -196,27 +204,28 @@ function AddDispenserForm({
 }) {
   const [serialNumber, setSerialNumber] = useState("");
   const [name, setName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const nameRef = useRef<TextInput>(null);
 
-  const handleSave = async () => {
-    if (!serialNumber.trim()) {
-      Alert.alert("Erro", "Informe o numero de serie.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const res = await claimDispenser(token, serialNumber.trim(), name.trim());
-      // O backend retorna o objeto do dispenser
+  // MUTAÇÃO DE CADASTRO
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      return await claimDispenser(token, serialNumber.trim(), name.trim());
+    },
+    onSuccess: (res) => {
       onCreated(res);
       Alert.alert("Sucesso", "Dispositivo associado!");
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       Alert.alert("Erro", e?.message || "Falha ao associar dispositivo.");
-    } finally {
-      setIsSubmitting(false);
     }
+  });
+
+  const handleSave = () => {
+    if (!serialNumber.trim()) {
+      Alert.alert("Erro", "Informe o número de série.");
+      return;
+    }
+    addMutation.mutate();
   };
 
   return (
@@ -224,14 +233,14 @@ function AddDispenserForm({
         <View style={styles.headerCopy}>
           <Text style={styles.pageTitle}>Adicionar dispositivo</Text>
           <Text style={styles.pageSubtitle}>
-            Digite o numero de serie que esta no dispenser.
+            Digite o número de série que está no dispenser.
           </Text>
         </View>
 
         <SurfaceCard muted>
           <View style={{ gap: 20 }}>
             <InputField
-                label="Numero de serie"
+                label="Número de série"
                 value={serialNumber}
                 onChangeText={setSerialNumber}
                 autoCapitalize="characters"
@@ -251,8 +260,12 @@ function AddDispenserForm({
         </SurfaceCard>
 
         <View style={{ marginTop: 24, gap: 12 }}>
-          <GradientButton title="Cancelar" variant="danger" onPress={onCancel} />
-          <GradientButton title={isSubmitting ? "Salvando..." : "Salvar"} onPress={handleSave} />
+          <GradientButton title="Cancelar" variant="danger" onPress={onCancel} disabled={addMutation.isPending} />
+          <GradientButton
+              title={addMutation.isPending ? "Salvando..." : "Salvar"}
+              onPress={handleSave}
+              disabled={addMutation.isPending}
+          />
         </View>
       </AppScreen>
   );

@@ -125,11 +125,11 @@ const styles = StyleSheet.create({
     height: 250,
     alignSelf: "center",
     marginTop: 40,
-    marginBottom: 14,
+    marginBottom: 2,
     resizeMode: "contain",
   },
   form: {
-    gap: 18,
+    gap: 6,
   },
   link: {
     color: colors.textMuted,

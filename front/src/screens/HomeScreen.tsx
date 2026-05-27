@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Pressable, StyleSheet, Text, View, ActivityIndicator, Animated, Easing } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useQuery } from "@tanstack/react-query";
 import { adherence, quickActions, TabKey } from "../data/mockData";
 import {
   AppScreen,
@@ -10,7 +11,7 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
-import { getMedications } from "../services/api"; // ✅ Sua rota de integração
+import { getMedications } from "../services/api";
 
 interface HomeScreenProps {
   token: string;
@@ -19,53 +20,36 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) {
-  // --- ESTADOS DA API ---
-  const [nextMed, setNextMed] = useState<any>(null);
-  const [countdown, setCountdown] = useState<string>("--:--h");
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. ESTADO DE UI (Mantido! Controla apenas o visual)
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    fetchNextMedication();
+  // 2. A FERRARI (React Query assumindo Rede, Cache e o Cronômetro)
+  const { data, isLoading } = useQuery({
+    // A chave do cache. Se o dispenserId mudar, ele refaz a busca sozinho.
+    queryKey: ['nextMedication', dispenserId],
 
-    // ✅ Cronômetro: Atualiza o contador na tela a cada 1 minuto
-    const intervalId = setInterval(() => {
-      fetchNextMedication();
-    }, 60000);
+    // Só executa se o ID do dispenser existir (substitui aquele seu IF inicial)
+    enabled: !!dispenserId && !!token,
 
-    return () => clearInterval(intervalId);
-  }, [token, dispenserId]);
+    // RECURSO DE OURO: Substitui o seu setInterval!
+    // Refaz a função silenciosamente a cada 60.000ms (1 minuto) para atualizar o relógio
+    refetchInterval: 60000,
 
-  const fetchNextMedication = async () => {
-    // 🔍 LOG 1: Descobrir se a função sequer é chamada e o que está vindo nas variáveis
-    console.log("➔ 1. ESCUTOU CHAMADA: dispenserId =", dispenserId, " | token =", token ? "Preenchido" : "Vazio");
+    queryFn: async () => {
+      console.log("➔ DISPARANDO API: Chamando getMedications via React Query...");
+      const meds = await getMedications(token, dispenserId!);
 
-    if (!dispenserId) {
-      // 🔍 LOG 2: Se parar aqui, o componente pai não está passando o ID do dispenser para a Home!
-      console.log("⚠️ 2. TRAVOU NO IF: Função cancelada porque dispenserId é nulo, falso ou zero.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      console.log("➔ 3. DISPARANDO API: Chamando getMedications...");
-      const data = await getMedications(token, dispenserId);
-
-      // 🔍 LOG 3: Ver a resposta real do banco de dados
-      console.log("✅ 4. BANCO DEVOLVEU DADOS:", data);
-
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.log("ℹ️ 5. ARRAY VAZIO: O banco respondeu, mas veio zero remédios cadastrados.");
-        setNextMed(null);
-        setCountdown("--:--h");
-        return;
+      if (!meds || !Array.isArray(meds) || meds.length === 0) {
+        return { nextMed: null, countdown: "--:--" };
       }
 
+      // --- O seu cálculo matemático exato continua aqui dentro ---
       const now = new Date();
       let absoluteClosestMed: any = null;
       let minDiff = Infinity;
-      let calculatedCountdown = "--:--h";
+      let calculatedCountdown = "--:--";
 
-      data.forEach((med: any) => {
+      meds.forEach((med: any) => {
         const nextDoseStr = med.nextDose || med.start_time || med.startTime;
         const intervalHours = Number(med.interval || med.interval_hours) || 8;
 
@@ -105,34 +89,53 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
           const totalMinutes = Math.floor(diff / 1000 / 60);
           const hrs = Math.floor(totalMinutes / 60);
           const mins = totalMinutes % 60;
-          calculatedCountdown = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}h`;
+          calculatedCountdown = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
         }
       });
 
-      console.log("🎯 6. CÁLCULO FINAL:", absoluteClosestMed, "Contador:", calculatedCountdown);
-      setNextMed(absoluteClosestMed);
-      setCountdown(calculatedCountdown);
-    } catch (error: any) {
-      // 🔍 LOG 4: Se a requisição cair por erro de rede/token, vai estourar aqui
-      console.log("❌ 7. ERRO CRÍTICO NA REQUISIÇÃO:", error.message || error);
-    } finally {
-      setIsLoading(false);
+      return { nextMed: absoluteClosestMed, countdown: calculatedCountdown };
     }
-  };
+  });
+
+  // Variáveis de fácil acesso derivadas do React Query
+  const nextMed = data?.nextMed;
+  const countdown = data?.countdown || "--:--h";
+
+  // 3. EFEITO VISUAL (Mantido! Reage ao dado que veio do React Query)
+  useEffect(() => {
+    if (nextMed) {
+      Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.05,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [nextMed, pulseAnim]);
 
   return (
       <AppScreen>
-        {/* Cartão principal dinâmico do remédio */}
         <GlassCard>
           <Text style={styles.heroLabel}>Proxima dose em</Text>
           <View style={styles.ringWrap}>
-            <View style={styles.ringOuter}>
+            <Animated.View style={[styles.ringOuter, { transform: [{ scale: pulseAnim }] }]}>
               <View style={styles.ringInner}>
                 {isLoading ? (
                     <ActivityIndicator size="small" color={colors.primary} />
                 ) : nextMed ? (
                     <>
-                      {/* ✅ Tempo Real calculado vindo do banco */}
                       <Text style={styles.heroTime}>{countdown}</Text>
                       <Text style={styles.heroMedication}>
                         {nextMed.name} {nextMed.dosage}
@@ -147,17 +150,12 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
                     </>
                 )}
               </View>
-            </View>
+            </Animated.View>
           </View>
-          <GradientAction
-              label="Confirmar agora"
-              onPress={() => onNavigate("history")}
-          />
         </GlassCard>
 
-        {/* Grade contendo o status do dispositivo e o gráfico de aderência */}
+        {/* ... Resto da grade de Status e Aderência continua exatamente igual ... */}
         <View style={styles.grid}>
-          {/* Cartão de status do dispositivo IoT */}
           <SurfaceCard muted>
             <View style={styles.statusHeader}>
               <Feather name="battery-charging" size={24} color={colors.text} />
@@ -170,7 +168,6 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
             </Text>
           </SurfaceCard>
 
-          {/* Cartão do gráfico de aderência semanal */}
           <SurfaceCard>
             <View style={styles.chartHeader}>
               <Text style={styles.cardTitle}>Aderencia semanal</Text>
@@ -198,7 +195,6 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
           </SurfaceCard>
         </View>
 
-        {/* Seção de acesso rápido (atalhos) */}
         <View style={styles.sectionBlock}>
           <SectionTitle>Acesso rapido</SectionTitle>
           <View style={styles.actionsGrid}>
@@ -225,22 +221,6 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
           </View>
         </View>
       </AppScreen>
-  );
-}
-
-function GradientAction({
-                          label,
-                          onPress,
-                        }: {
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-      <Pressable onPress={onPress}>
-        <LinearGradient colors={[colors.primary, colors.primaryBright]} style={styles.heroButton}>
-          <Text style={styles.heroButtonText}>{label}</Text>
-        </LinearGradient>
-      </Pressable>
   );
 }
 
@@ -279,7 +259,7 @@ const styles = StyleSheet.create({
   },
   heroTime: {
     color: colors.text,
-    fontSize: 34, // Um tiquinho menor para acomodar o "h" com segurança sem quebrar linha
+    fontSize: 34,
     fontWeight: "900",
   },
   heroMedication: {
@@ -288,121 +268,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  heroButton: {
-    borderRadius: radius.lg,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  heroButtonText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  grid: {
-    gap: 16,
-  },
-  statusHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  bigIcon: {
-    fontSize: 24,
-    color: colors.primary,
-  },
-  stablePill: {
-    backgroundColor: colors.secondarySoft,
-    color: colors.secondary,
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  metaLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
-    fontWeight: "700",
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  cardBody: {
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 8,
-  },
-  chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  chartRow: {
-    height: 110,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-  },
-  bar: {
-    flex: 1,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  barIdle: {
-    backgroundColor: colors.primarySoft,
-  },
-  barActive: {
-    backgroundColor: colors.primary,
-  },
-  daysRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  dayLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  sectionBlock: {
-    gap: 16,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  actionCard: {
-    width: "47%",
-    backgroundColor: colors.surfaceLowest,
-    borderRadius: radius.lg,
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    gap: 10,
-  },
-  actionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.tertiarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionIcon: {
-    fontSize: 20,
-  },
-  actionLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-  },
+  grid: { gap: 16 },
+  statusHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 28 },
+  stablePill: { backgroundColor: colors.secondarySoft, color: colors.secondary, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4, fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  metaLabel: { color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: "700" },
+  cardTitle: { color: colors.text, fontSize: 24, fontWeight: "800" },
+  cardBody: { color: colors.textMuted, fontSize: 14, marginTop: 8 },
+  chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  chartRow: { height: 110, flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  bar: { flex: 1, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  barIdle: { backgroundColor: colors.primarySoft },
+  barActive: { backgroundColor: colors.primary },
+  daysRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  dayLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "800" },
+  sectionBlock: { gap: 16 },
+  actionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  actionCard: { width: "47%", backgroundColor: colors.surfaceLowest, borderRadius: radius.lg, paddingVertical: 18, paddingHorizontal: 12, alignItems: "center", gap: 10 },
+  actionIconWrap: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.tertiarySoft, alignItems: "center", justifyContent: "center" },
+  actionLabel: { color: colors.text, fontSize: 13, fontWeight: "700", textAlign: "center" },
 });

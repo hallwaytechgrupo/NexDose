@@ -122,6 +122,6 @@ export const unclaimDispenser = async (req: Request<{ id: string }>, res: Respon
     return res.status(200).json({ message: 'Dispensador removido/desassociado com sucesso.' });
   } catch (error) {
     console.error('Erro ao desassociar dispensador:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor.' });
+    res.status(500).json({ error: 'Erro interno do servidor.' });
   }
 };

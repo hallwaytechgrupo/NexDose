@@ -9,6 +9,7 @@ import {
     Text,
     TextInput,
     View,
+    ViewStyle,
 } from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
 import {colors, radius, shadow} from "../theme/tokens";
@@ -71,12 +72,14 @@ export function GradientButton({
                                    title,
                                    onPress,
                                    variant,
-                                   disabled
+                                   disabled,
+                                   style,
                                }: {
     title: string,
     onPress?: () => void,
     variant?: "default" | "danger",
-    disabled?: boolean
+    disabled?: boolean,
+    style?: ViewStyle,
 }) {
     const gradientColors: [string, string] =
         variant === "danger"
@@ -84,17 +87,32 @@ export function GradientButton({
             : [colors.primary, colors.primaryBright];
 
     return (
-        <Pressable onPress={onPress}>
+        <Pressable onPress={onPress} disabled={disabled}>
             <LinearGradient
                 colors={gradientColors}
                 start={{x: 0, y: 0}}
                 end={{x: 1, y: 1}}
-                style={styles.gradientButton}
+                style={[styles.gradientButton, style]}
             >
                 <Text style={styles.gradientButtonText}>{title}</Text>
             </LinearGradient>
         </Pressable>
     );
+}
+
+export function ButtonRow({ children }: PropsWithChildren) {
+  return (
+    <View style={styles.buttonRow}>
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, {
+            style: { flex: 1 },
+          } as any);
+        }
+        return child;
+      })}
+    </View>
+  );
 }
 
 export function Chip({
@@ -244,6 +262,10 @@ const styles = StyleSheet.create({
         color: colors.white,
         fontWeight: "800",
         fontSize: 16,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        gap: 12,
     },
     chip: {
         borderRadius: radius.full,

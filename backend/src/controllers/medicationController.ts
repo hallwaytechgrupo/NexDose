@@ -54,6 +54,47 @@ async function assertDeviceAccess(params: {
   return { ok: true };
 }
 
+export const getHistory = async (req: Request, res: Response) => {
+  const userId = Number((req as any).userId);
+  const dispenserId = toInt(req.params.dispenserId);
+
+  if (!dispenserId) {
+    return res.status(400).json({ error: 'O ID do dispensador é obrigatório.' });
+  }
+
+  const access = await assertDeviceAccess({ userId, dispenserId, requireEdit: false });
+  if (!access.ok) {
+    return res.status(access.status).json({ error: access.error });
+  }
+
+  try {
+    const result = await pool.query(
+        `SELECT
+           h.id,
+           m.name as medication_name,
+           h.taken_at,
+           h.scheduled_at,
+           CASE
+             WHEN h.taken_at IS NOT NULL AND h.taken_at <= h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_on_time'
+             WHEN h.taken_at IS NOT NULL AND h.taken_at > h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_late'
+             WHEN h.taken_at IS NULL AND h.scheduled_at <= NOW() THEN 'missed'
+             ELSE 'pending'
+             END as status
+         FROM dose_history h
+                JOIN medications m ON h.medication_id = m.id
+         WHERE h.dispenser_id = $1
+           AND DATE(h.scheduled_at AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
+         ORDER BY h.scheduled_at ASC`,
+        [dispenserId] // <--- AQUI ESTÁ O PARÂMETRO $1!
+    );
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar histórico de doses:', error);
+    res.status(500).json({ error: 'Erro interno ao buscar o histórico.' });
+  }
+};
+
 export const getMedications = async (req: Request, res: Response) => {
   const userId = Number((req as any).userId);
   const dispenserId = toInt(req.params.dispenserId ?? req.query.dispenserId);
@@ -106,21 +147,83 @@ export const createMedication = async (
     return res.status(400).json({ error: 'Campos obrigatórios faltando.' });
   }
 
-  // Extrai apenas a string de hora local ("15:00:00") para manter a compatibilidade com a linha do tempo do app
+  // Prevenção contra loop infinito se o usuário enviar intervalo 0
+  if (intervalHours <= 0) {
+    return res.status(400).json({ error: 'O intervalo de horas deve ser maior que zero.' });
+  }
+
   const parsedStartDate = new Date(startDate);
-  const startTime = parsedStartDate.toLocaleTimeString('pt-BR', { hour12: false });
+  // Força o fuso do Brasil para evitar que no servidor fique 3h adiantado
+  const startTime = parsedStartDate.toLocaleTimeString('pt-BR', {
+    hour12: false,
+    timeZone: 'America/Sao_Paulo'
+  });
+
+  // AQUI ESTÁ A VARIÁVEL QUE HAVIA SUMIDO:
   const finalEndDate = isContinuous ? null : endDate;
 
   try {
+    // 1. Cria a "Regra" do medicamento
     const medResult = await pool.query(
         `INSERT INTO medications (dispenser_id, name, dosage, start_time, end_date, interval_hours, is_continuous)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
         [dispenserId, name, dosage, startTime, finalEndDate, intervalHours, isContinuous]
     );
 
-    return res.status(201).json(medResult.rows[0]);
+    const newMedication = medResult.rows[0];
+    const medicationId = newMedication.id;
+
+    // 2. Calcula as datas das próximas doses
+    const doses: Date[] = [];
+    let currentDoseTime = new Date(startDate);
+
+    // Teto máximo de 30 dias para não sobrecarregar o banco
+    const maxDays = 30;
+    const limitByDays = new Date(Date.now() + maxDays * 24 * 60 * 60 * 1000);
+    let limitDate = limitByDays;
+
+    if (!isContinuous && finalEndDate) {
+      const parsedEndDate = new Date(finalEndDate);
+      // Se tiver data final e for menor que 30 dias, respeita a data final do remédio
+      limitDate = parsedEndDate < limitByDays ? parsedEndDate : limitByDays;
+    }
+
+    // Trava de segurança extra de 200 doses máximas no array
+    const maxDosesLimit = 200;
+    let doseCount = 0;
+
+    while (currentDoseTime <= limitDate && doseCount < maxDosesLimit) {
+      doses.push(new Date(currentDoseTime));
+
+      // Soma o intervalo de horas no tempo atual
+      currentDoseTime = new Date(currentDoseTime.getTime() + intervalHours * 60 * 60 * 1000);
+      doseCount++;
+    }
+
+    // 3. Salva todas as doses de uma vez (Bulk Insert)
+    if (doses.length > 0) {
+      const values: any[] = [];
+      const placeholders: string[] = [];
+      let paramIndex = 1;
+
+      doses.forEach((dose) => {
+        placeholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
+        // Aqui passamos a 'dose' direto, sem .toISOString()
+        values.push(dispenserId, medicationId, dose);
+      });
+
+      // Gera a query final de forma segura contra SQL Injection
+      const query = `
+        INSERT INTO dose_history (dispenser_id, medication_id, scheduled_at)
+        VALUES ${placeholders.join(', ')}
+      `;
+
+      await pool.query(query, values);
+    }
+
+    return res.status(201).json(newMedication);
   } catch (error) {
-    console.error('Erro ao criar medicamento:', error);
+    console.error('Erro ao criar medicamento e gerar histórico:', error);
     return res.status(500).json({ error: 'Erro ao salvar medicamento.' });
   }
 };

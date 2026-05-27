@@ -1,164 +1,137 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { historyItems } from "../data/mockData";
-import {
-  AppScreen,
-  GradientButton,
-  SectionTitle,
-  SurfaceCard,
-} from "../components/Primitives";
+import { StyleSheet, Text, View, ActivityIndicator, FlatList } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { AppScreen, SectionTitle } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
+import { getHistory, HistoryItem } from "../services/api";
 
-export function HistoryScreen() {
-  return (
-    <AppScreen>
-      <View style={styles.overview}>
-        <View>
-          <SectionTitle>Status do dia</SectionTitle>
-          <Text style={styles.percentage}>85%</Text>
-          <Text style={styles.percentageLabel}>Adesao</Text>
-          <Text style={styles.headline}>Controle de dosagem</Text>
-        </View>
-       
-      </View>
+type HistoryScreenProps = {
+  token: string;
+  dispenserId: number | null;
+};
 
-      <View style={styles.progressTrack}>
-        <View style={styles.progressFill} />
-      </View>
+export function HistoryScreen({ token, dispenserId }: HistoryScreenProps) {
 
-      <View style={styles.block}>
-        <SectionTitle>Historico de hoje</SectionTitle>
-        <View style={styles.list}>
-          {historyItems.map((item) => (
-            <View
-              key={`${item.name}-${item.time}`}
-              style={[
-                styles.historyCard,
-                item.status === "missed"
-                  ? styles.historyMissed
-                  : styles.historyTaken,
-              ]}
-            >
-              <View style={styles.historyCopy}>
-                <View
-                  style={[
-                    styles.historyIconWrap,
-                    item.status === "missed"
-                      ? styles.historyIconWrapMissed
-                      : styles.historyIconWrapTaken,
-                  ]}
-                >
-                  <Feather
-                    name={item.status === "missed" ? "alert-triangle" : "check"}
-                    size={20}
-                    color={
-                      item.status === "missed" ? colors.error : colors.secondary
-                    }
-                  />
-                </View>
-                <View style={styles.historyText}>
-                  <Text style={styles.historyTitle}>{item.name}</Text>
-                  <Text
-                    style={[
-                      styles.historySubtitle,
-                      item.status === "missed"
-                        ? styles.historySubtitleMissed
-                        : undefined,
-                    ]}
-                  >
-                    {item.time}
-                  </Text>
-                </View>
-              </View>
-              <Text
-                style={
-                  item.status === "missed"
-                    ? styles.pendingBadge
-                    : styles.doneBadge
-                }
-              >
-                {item.status === "missed" ? "Pendente" : "Tomado"}
-              </Text>
+  // A FERRARI: Substitui todos os useState e o useEffect
+  const {
+    data: historyItems = [],
+    isLoading,
+    isError
+  } = useQuery({
+    queryKey: ['history', dispenserId],
+    enabled: !!dispenserId && !!token,
+    queryFn: async () => {
+      return await getHistory(token, dispenserId!);
+    }
+  });
+
+  const renderHistoryItem = ({ item }: { item: HistoryItem }) => {
+    const time = new Date(item.scheduled_at).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Configurações padrão para 'pending'
+    let iconName: keyof typeof Feather.glyphMap = "clock";
+    let iconColor = colors.textMuted;
+    let badgeText = "Pendente";
+    let badgeStyle = styles.pendingBadge;
+    let iconWrapStyle = styles.historyIconWrapPending;
+    let cardStyle = styles.historyTaken;
+    let titleStyle = styles.historyTitle;
+
+    // Ajusta o visual dependendo do status
+    if (item.status === 'taken_on_time') {
+      iconName = "check";
+      iconColor = colors.secondary;
+      badgeText = "Tomado";
+      badgeStyle = styles.doneBadge;
+      iconWrapStyle = styles.historyIconWrapTaken;
+    } else if (item.status === 'taken_late') {
+      iconName = "alert-circle";
+      iconColor = "#F59E0B"; // Cor Laranja/Âmbar
+      badgeText = "Com atraso";
+      badgeStyle = styles.lateBadge;
+      iconWrapStyle = styles.historyIconWrapLate;
+    } else if (item.status === 'missed') {
+      iconName = "alert-triangle";
+      iconColor = colors.error;
+      badgeText = "Atrasado / Não tomado";
+      badgeStyle = styles.missedBadge;
+      iconWrapStyle = styles.historyIconWrapMissed;
+      cardStyle = styles.historyMissed;
+      titleStyle = styles.historyTitleMissed;
+    }
+
+    return (
+        <View style={[styles.historyCard, cardStyle]}>
+          <View style={styles.historyCopy}>
+            <View style={[styles.historyIconWrap, iconWrapStyle]}>
+              <Feather name={iconName} size={20} color={iconColor} />
             </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.block}>
-        <SectionTitle>Monitoramento ativo</SectionTitle>
-        <SurfaceCard muted>
-          <View style={styles.caregiverHeader}>
-            <View style={styles.caregiverAvatar}>
-              <Text style={styles.caregiverAvatarText}>HS</Text>
-            </View>
-            <View style={styles.caregiverCopy}>
-              <Text style={styles.caregiverEyebrow}>
-                Responsavel cadastrado
-              </Text>
-              <Text style={styles.caregiverName}>Dra. Helena Silva</Text>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              >
-                <Feather name="bell" size={12} color={colors.secondary} />
-                <Text style={styles.caregiverMeta}>Notificacoes ativas</Text>
-              </View>
+            <View style={styles.historyText}>
+              <Text style={titleStyle}>{item.medication_name}</Text>
+              <Text style={styles.historySubtitle}>{time}</Text>
             </View>
           </View>
-          <GradientButton title="Ligar para o Responsável" />
-          <Text style={styles.helpCopy}>
-            Em caso de emergencia, o responsavel sera notificado com sua
-            localizacao atual.
-          </Text>
-        </SurfaceCard>
-      </View>
-    </AppScreen>
+          <Text style={badgeStyle}>{badgeText}</Text>
+        </View>
+    );
+  };
+
+  const renderContent = () => {
+    if (!dispenserId) {
+      return <Text style={styles.emptyText}>Nenhum dispensador selecionado.</Text>;
+    }
+
+    if (isLoading) {
+      return <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />;
+    }
+
+    if (isError) {
+      return <Text style={styles.emptyText}>Falha ao buscar histórico.</Text>;
+    }
+
+    if (historyItems.length === 0) {
+      return <Text style={styles.emptyText}>Nenhum histórico encontrado para hoje.</Text>;
+    }
+
+    return (
+        <FlatList
+            data={historyItems}
+            renderItem={renderHistoryItem}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.list}
+            scrollEnabled={false} // <-- OPÇÃO 2 IMPLEMENTADA AQUI
+        />
+    );
+  };
+
+  return (
+      <AppScreen>
+        <View style={styles.block}>
+          <SectionTitle>Histórico de hoje</SectionTitle>
+          {renderContent()}
+        </View>
+      </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  overview: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  headline: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: "900",
-    marginTop: 6,
-  },
-  percentageBlock: {
-    alignItems: "flex-end",
-    gap: 2,
-  },
-  percentage: {
-    color: colors.primary,
-    fontSize: 30,
-    fontWeight: "900",
-  },
-  percentageLabel: {
-    color: colors.outline,
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  progressTrack: {
-    height: 10,
-    backgroundColor: colors.surfaceHigh,
-    borderRadius: radius.full,
-    overflow: "hidden",
-  },
-  progressFill: {
-    width: "85%",
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
   block: {
     gap: 16,
+    flex: 1,
   },
   list: {
     gap: 12,
+    paddingBottom: 20,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 16,
+    color: colors.textMuted,
   },
   historyCard: {
     borderRadius: radius.lg,
@@ -190,13 +163,14 @@ const styles = StyleSheet.create({
   historyIconWrapTaken: {
     backgroundColor: "rgba(111,251,133,0.3)",
   },
+  historyIconWrapLate: {
+    backgroundColor: "rgba(245,158,11,0.2)", // Laranja clarinho
+  },
   historyIconWrapMissed: {
     backgroundColor: "rgba(186,26,26,0.12)",
   },
-  historyIcon: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: "800",
+  historyIconWrapPending: {
+    backgroundColor: "rgba(150,150,150,0.15)", // Cinza clarinho
   },
   historyText: {
     flex: 1,
@@ -207,75 +181,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
   },
+  historyTitleMissed: {
+    color: colors.error,
+    fontSize: 15,
+    fontWeight: "800",
+  },
   historySubtitle: {
     color: colors.textMuted,
     fontSize: 12,
-  },
-  historySubtitleMissed: {
-    color: colors.error,
-    fontWeight: "700",
   },
   doneBadge: {
     color: colors.secondary,
     fontSize: 12,
     fontWeight: "800",
   },
-  pendingBadge: {
-    color: colors.white,
-    backgroundColor: colors.tertiary,
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    overflow: "hidden",
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  caregiverHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 20,
-  },
-  caregiverAvatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 28,
-    backgroundColor: colors.surfaceLowest,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  caregiverAvatarText: {
-    color: colors.primary,
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  caregiverCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  caregiverEyebrow: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-  },
-  caregiverName: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
-  },
-  caregiverMeta: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  helpCopy: {
-    marginTop: 14,
-    color: colors.outline,
-    textAlign: "center",
+  lateBadge: {
+    color: "#F59E0B",
     fontSize: 12,
-    lineHeight: 18,
+    fontWeight: "800",
+  },
+  missedBadge: {
+    color: colors.error,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  pendingBadge: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "800",
   },
 });

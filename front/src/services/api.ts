@@ -48,6 +48,16 @@ export type Dispenser = {
   can_edit_medications?: boolean;
 };
 
+export type HistoryStatus = 'taken_on_time' | 'taken_late' | 'missed' | 'pending';
+
+export interface HistoryItem {
+  id: number;
+  medication_name: string;
+  scheduled_at: string;
+  taken_at: string | null;
+  status: HistoryStatus;
+}
+
 // --- HELPER DE REQUISIÇÃO ---
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -68,7 +78,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const errorMessage =
         data && typeof data === "object" && "error" in data ? data.error : null;
 
-    throw new Error(errorMessage || "Falha na comunicação com o servidor.");
+    throw new Error(errorMessage || `Falha na comunicação. (Status: ${response.status})`);
   }
 
   return data as T;
@@ -211,6 +221,15 @@ export async function deleteMedication(
 ): Promise<any> {
   return request<any>(`/api/dispensers/${dispenserId}/medications/${id}`, {
     method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// --- FUNÇÕES DE HISTÓRICO ---
+
+export async function getHistory(token: string, dispenserId: number): Promise<HistoryItem[]> {
+  return request<HistoryItem[]>(`/api/dispensers/${dispenserId}/history`, {
+    method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });
 }

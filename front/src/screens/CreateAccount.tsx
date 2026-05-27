@@ -186,13 +186,14 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   headerCopy: {
-    marginBottom: 20,
+    marginBottom: 5,
   },
   pageTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: colors.text,
     textAlign: "center",
+    marginTop: 12
   },
   pageSubtitle: {
     fontSize: 16,
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   contentBlock: {
-    gap: 18,
+    gap: 10,
   },
   roleSection: {
     gap: 10,
