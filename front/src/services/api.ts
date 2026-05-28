@@ -234,6 +234,15 @@ export async function getHistory(token: string, dispenserId: number): Promise<Hi
   });
 }
 
+export async function getWeeklyAdherence(token: string, dispenserId: number) {
+  return request<any[]>(`/api/dispensers/${dispenserId}/adherence`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+
+
 // --- FUNÇÕES DE CUIDADORES ---
 
 export async function addCaregiver(

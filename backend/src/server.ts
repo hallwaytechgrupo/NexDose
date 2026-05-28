@@ -10,8 +10,9 @@ import dispenserMedicationRoutes from './routes/dispenserMedicationRoutes';
 import caregiverRoutes from './routes/caregiverRoutes';
 import dispenserRoutes from './routes/dispenserRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
+import { getWeeklyAdherence } from './controllers/adherenceController';
 import userRoutes from './routes/userRoute';
-
+import { authMiddleware } from './middlewares/authMiddleware'; // (Ou ajuste o caminho correto)
 dotenv.config();
 
 function requireEnv(name: string): string {
@@ -49,7 +50,7 @@ app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/dispensers', dispenserRoutes);
 app.use('/api/farmacias', pharmacyRoutes);
 app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
-
+app.get('/api/dispensers/:dispenserId/adherence', authMiddleware, getWeeklyAdherence);
 app.use(userRoutes);
 
 app.listen(3000, () => console.log("🚀 Backend rodando na porta 3000"));

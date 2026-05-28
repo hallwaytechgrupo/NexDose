@@ -64,14 +64,15 @@ export default function MedicationsScreen({
                                             dispenserId,
                                             canEdit,
                                           }: MedicationsScreenProps) {
-  // Instância do QueryClient para podermos forçar atualizações
   const queryClient = useQueryClient();
 
-  // --- ESTADOS DO FORMULÁRIO (MANTIDOS! O usuário precisa deles para digitar) ---
+  // --- ESTADOS DO FORMULÁRIO ---
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [medicationName, setMedicationName] = useState('');
   const [dosage, setDosage] = useState('');
+  // ✅ ESTADO: Compartimento (Gaveta)
+  const [compartment, setCompartment] = useState<number>(1);
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [isContinuous, setIsContinuous] = useState(false);
@@ -79,7 +80,7 @@ export default function MedicationsScreen({
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [selectedInterval, setSelectedInterval] = useState(8);
 
-  // 1. A BUSCA DE DADOS (Substitui o useEffect e o useState da lista)
+  // 1. A BUSCA DE DADOS
   const { data: medicationsList = [], isLoading } = useQuery({
     queryKey: ['medications', dispenserId],
     enabled: !!dispenserId && !!token,
@@ -89,6 +90,7 @@ export default function MedicationsScreen({
         id: String(med.id),
         name: med.name,
         dosage: med.dosage || '',
+        compartment: med.compartment || 1,
         interval: med.interval_hours || med.interval,
         nextDose: med.start_time ? med.start_time.substring(0, 5) : (med.nextDose ? med.nextDose.substring(0, 5) : '--:--'),
         endDate: med.end_date || med.endDate,
@@ -97,7 +99,7 @@ export default function MedicationsScreen({
     }
   });
 
-  // 2. MUTAÇÕES (Substituem o setIsSubmitting e automatizam o recarregamento da lista)
+  // 2. MUTAÇÕES
   const saveMutation = useMutation({
     mutationFn: async (payload: any) => {
       if (editingId) {
@@ -107,14 +109,12 @@ export default function MedicationsScreen({
       }
     },
     onSuccess: () => {
-      // Magia pura: Invalida o cache e faz a lista recarregar sozinha na tela!
       queryClient.invalidateQueries({ queryKey: ['medications', dispenserId] });
-      // Se a Home estiver usando a mesma queryKey, ela também vai atualizar o relógio!
       queryClient.invalidateQueries({ queryKey: ['nextMedication', dispenserId] });
       setIsModalVisible(false);
     },
     onError: (error: any) => {
-      Alert.alert("Erro", error.message || "Falha ao salvar.");
+      Alert.alert("Erro", error.message || "Falha ao salvar. Verifique se a gaveta já não está em uso por outro medicamento.");
     }
   });
 
@@ -138,6 +138,7 @@ export default function MedicationsScreen({
     setEditingId(null);
     setMedicationName('');
     setDosage('');
+    setCompartment(1);
     setStartDate(new Date());
     setEndDate(new Date());
     setIsContinuous(false);
@@ -149,6 +150,7 @@ export default function MedicationsScreen({
     setEditingId(med.id);
     setMedicationName(med.name);
     setDosage(med.dosage);
+    setCompartment(med.compartment);
     setSelectedInterval(med.interval);
     setIsContinuous(med.isContinuous);
     if (med.endDate) setEndDate(new Date(med.endDate));
@@ -172,6 +174,7 @@ export default function MedicationsScreen({
     const payload = {
       name: medicationName,
       dosage: dosage,
+      compartment: compartment,
       startDate: startDate.toISOString(),
       intervalHours: selectedInterval,
       isContinuous: isContinuous,
@@ -211,7 +214,7 @@ export default function MedicationsScreen({
                           <View style={{ flex: 1, gap: 8 }}>
                             <View>
                               <Text style={styles.medName}>{item.name} {item.dosage}</Text>
-                              <Text style={styles.medInfo}>Intervalo: de {item.interval}h em {item.interval}h</Text>
+                              <Text style={styles.medInfo}>Disco {item.compartment} • de {item.interval}h em {item.interval}h</Text>
                             </View>
 
                             {nextHours.length > 0 && (
@@ -244,26 +247,56 @@ export default function MedicationsScreen({
         )}
 
         {/* MODAL COMPLETO DE CADASTRO/EDIÇÃO */}
-        <Modal visible={isModalVisible} animationType="slide" presentationStyle="pageSheet">
+        <Modal
+            visible={isModalVisible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setIsModalVisible(false)} /* ✅ Captura o botão físico de voltar do Android */
+        >
           <View style={styles.modalContainer}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>{editingId ? "Editar" : "Novo Medicamento"}</Text>
-                {editingId && canEdit && (
-                    <Pressable onPress={handleDelete} style={styles.deleteIconBtn}>
-                      {deleteMutation.isPending ? (
-                          <ActivityIndicator size="small" color={colors.error} />
-                      ) : (
-                          <Feather name="trash-2" size={20} color={colors.error} />
-                      )}
-                    </Pressable>
-                )}
-              </View>
 
+            {/* ✅ CABEÇALHO DO MODAL COM FUNÇÃO DE VOLTAR INTEGRADA */}
+            <View style={styles.modalHeaderRow}>
+              <Pressable onPress={() => setIsModalVisible(false)} style={styles.closeModalBtn}>
+                <View style={styles.backButton}>
+                <Feather name="arrow-left" size={24} color={colors.text} />
+                  </View>
+              </Pressable>
+
+              <Text style={styles.modalTitle}>{editingId ? "Editar" : "Novo Medicamento"}</Text>
+
+              {editingId && canEdit ? (
+                  <Pressable onPress={handleDelete} style={styles.deleteIconBtn}>
+                    {deleteMutation.isPending ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                    ) : (
+                        <Feather name="trash-2" size={20} color={colors.error} />
+                    )}
+                  </Pressable>
+              ) : (
+                  <View style={{ width: 40 }} />
+              )}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
               <SurfaceCard muted>
                 <View style={styles.contentBlock}>
                   <InputField label="Nome do Remédio" value={medicationName} onChangeText={setMedicationName} editable={canEdit} />
                   <InputField label="Dosagem (ex: 500mg)" value={dosage} onChangeText={setDosage} editable={canEdit} />
+
+                  <View>
+                    <SectionTitle>Disco do Dispenser</SectionTitle>
+                    <View style={styles.chipsRow}>
+                      {[1, 2, 3].map(num => (
+                          <Chip
+                              key={`disco-${num}`}
+                              label={`Disco ${num}`}
+                              active={compartment === num}
+                              onPress={() => canEdit && setCompartment(num)}
+                          />
+                      ))}
+                    </View>
+                  </View>
 
                   <View style={styles.switchRow}>
                     <View style={{ flex: 1 }}>
@@ -321,7 +354,6 @@ export default function MedicationsScreen({
                     <GradientButton
                         title={saveMutation.isPending ? "Salvando..." : "Salvar"}
                         onPress={handleSaveMedication}
-                        // Desabilita o botão para evitar cliques duplos
                         disabled={saveMutation.isPending}
                     />
                 )}
@@ -339,7 +371,7 @@ const styles = StyleSheet.create({
   medCard: { padding: 16, marginBottom: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   medName: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  medInfo: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
   scheduleRow: { flexDirection: "row", gap: 6, marginTop: 6 },
   timeBadge: { backgroundColor: "#F3F4F6", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#E5E7EB" },
   timeBadgeText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
@@ -352,15 +384,51 @@ const styles = StyleSheet.create({
   editButton: { padding: 8, borderRadius: radius.full, backgroundColor: colors.surfaceLowest, borderWidth: 1, borderColor: colors.outline },
   emptyText: { textAlign: 'center', marginTop: 40, color: colors.textMuted },
   modalContainer: { flex: 1, padding: 20, backgroundColor: colors.background },
-  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.primary, marginTop:50 },
-  deleteIconBtn: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: radius.full, marginTop: 50 },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 40
+  },
+  closeModalBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceLowest,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.outline,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  deleteIconBtn: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFEBEE',
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   contentBlock: { gap: 16 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   subLabel: { fontSize: 12, color: colors.textMuted },
   selectorField: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceLowest, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outline },
   selectorText: { fontSize: 16, color: colors.text, fontWeight: '600' },
   row: { flexDirection: 'row' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chipsRow: {  flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   modalButtons: { marginTop: 30, gap: 10, paddingBottom: 20 }
 });
+

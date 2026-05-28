@@ -6,6 +6,7 @@ import {
   deleteMedication,
   getHistory
 } from '../controllers/medicationController';
+import { getWeeklyAdherence } from '../controllers/adherenceController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -21,5 +22,7 @@ router.delete('/:dispenserId/medications/:id', deleteMedication);
 
 // Rota de Histórico
 router.get('/:dispenserId/history', getHistory);
+
+router.get('/:dispenserId/adherence', getWeeklyAdherence);
 
 export default router;

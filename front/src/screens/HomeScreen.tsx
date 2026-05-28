@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View, ActivityIndicator, Animated, Easing } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useQuery } from "@tanstack/react-query";
-import { adherence, quickActions, TabKey } from "../data/mockData";
+import { quickActions, TabKey } from "../data/mockData"; // ❌ Removido o 'adherence' do mockData
 import {
   AppScreen,
   GlassCard,
@@ -11,7 +11,7 @@ import {
 } from "../components/Primitives";
 import { colors, radius } from "../theme/tokens";
 import { Feather } from "@expo/vector-icons";
-import { getMedications } from "../services/api";
+import { getMedications, getWeeklyAdherence } from "../services/api"; // ✅ Importada a nova função da API
 
 interface HomeScreenProps {
   token: string;
@@ -20,21 +20,14 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) {
-  // 1. ESTADO DE UI (Mantido! Controla apenas o visual)
+  // 1. ESTADO DE UI
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // 2. A FERRARI (React Query assumindo Rede, Cache e o Cronômetro)
-  const { data, isLoading } = useQuery({
-    // A chave do cache. Se o dispenserId mudar, ele refaz a busca sozinho.
+  // 2. QUERY 1: Próximo Medicamento e Relógio
+  const { data: medData, isLoading: isLoadingMeds } = useQuery({
     queryKey: ['nextMedication', dispenserId],
-
-    // Só executa se o ID do dispenser existir (substitui aquele seu IF inicial)
     enabled: !!dispenserId && !!token,
-
-    // RECURSO DE OURO: Substitui o seu setInterval!
-    // Refaz a função silenciosamente a cada 60.000ms (1 minuto) para atualizar o relógio
-    refetchInterval: 60000,
-
+    refetchInterval: 60000, // Atualiza a cada 1 min
     queryFn: async () => {
       console.log("➔ DISPARANDO API: Chamando getMedications via React Query...");
       const meds = await getMedications(token, dispenserId!);
@@ -43,7 +36,6 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
         return { nextMed: null, countdown: "--:--" };
       }
 
-      // --- O seu cálculo matemático exato continua aqui dentro ---
       const now = new Date();
       let absoluteClosestMed: any = null;
       let minDiff = Infinity;
@@ -97,11 +89,28 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
     }
   });
 
-  // Variáveis de fácil acesso derivadas do React Query
-  const nextMed = data?.nextMed;
-  const countdown = data?.countdown || "--:--h";
+  // ✅ 3. QUERY 2: Aderência Semanal (Dados do Banco)
+  const { data: adherenceData = [] } = useQuery({
+    queryKey: ['adherence', dispenserId],
+    enabled: !!dispenserId && !!token,
+    queryFn: async () => {
+      console.log("➔ DISPARANDO API: Chamando getWeeklyAdherence...");
+      try {
+        const result = await getWeeklyAdherence(token, dispenserId!);
+        console.log("✅ DADOS QUE CHEGARAM DO BANCO:", result);
+        return result;
+      } catch (error) {
+        console.log("❌ ERRO AO PUXAR GRÁFICO:", error);
+        throw error;
+      }
+    }
+  });
 
-  // 3. EFEITO VISUAL (Mantido! Reage ao dado que veio do React Query)
+  // Variáveis derivadas
+  const nextMed = medData?.nextMed;
+  const countdown = medData?.countdown || "--:--";
+
+  // 4. EFEITO VISUAL DO RELÓGIO
   useEffect(() => {
     if (nextMed) {
       Animated.loop(
@@ -132,7 +141,7 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
           <View style={styles.ringWrap}>
             <Animated.View style={[styles.ringOuter, { transform: [{ scale: pulseAnim }] }]}>
               <View style={styles.ringInner}>
-                {isLoading ? (
+                {isLoadingMeds ? (
                     <ActivityIndicator size="small" color={colors.primary} />
                 ) : nextMed ? (
                     <>
@@ -154,8 +163,8 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
           </View>
         </GlassCard>
 
-        {/* ... Resto da grade de Status e Aderência continua exatamente igual ... */}
         <View style={styles.grid}>
+          {/* CARD DE STATUS DA BATERIA */}
           <SurfaceCard muted>
             <View style={styles.statusHeader}>
               <Feather name="battery-charging" size={24} color={colors.text} />
@@ -168,29 +177,44 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
             </Text>
           </SurfaceCard>
 
+          {/* ✅ CARD DO GRÁFICO ATUALIZADO PARA DADOS REAIS */}
           <SurfaceCard>
             <View style={styles.chartHeader}>
               <Text style={styles.cardTitle}>Aderencia semanal</Text>
               <Feather name="arrow-up-circle" size={24} color={colors.primary} />
             </View>
+
             <View style={styles.chartRow}>
-              {adherence.map((value, index) => (
-                  <View
-                      key={`${value}-${index}`}
-                      style={[
-                        styles.bar,
-                        { height: value },
-                        index === 4 ? styles.barActive : styles.barIdle,
-                      ]}
-                  />
-              ))}
+              {adherenceData.length > 0 ? (
+                  adherenceData.map((item: any, index: number) => (
+                      <View
+                          key={`bar-${index}`}
+                          style={[
+                            styles.bar,
+                            { height: `${item.percentage}%`, minHeight: '5%' }, // ✅ Altura dinâmica em %
+                            index === adherenceData.length - 1 ? styles.barActive : styles.barIdle,
+                          ]}
+                      />
+                  ))
+              ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: colors.textMuted, fontSize: 12 }}>Carregando gráfico...</Text>
+                  </View>
+              )}
             </View>
+
             <View style={styles.daysRow}>
-              {["S", "T", "Q", "Q", "S", "S", "D"].map((day, index) => (
-                  <Text key={`${day}-${index}`} style={styles.dayLabel}>
-                    {day}
-                  </Text>
-              ))}
+              {adherenceData.length > 0 ? (
+                  adherenceData.map((item: any, index: number) => (
+                      <Text key={`day-${index}`} style={styles.dayLabel}>
+                        {item.day}
+                      </Text>
+                  ))
+              ) : (
+                  ["S", "T", "Q", "Q", "S", "S", "D"].map((day, index) => (
+                      <Text key={`mock-day-${index}`} style={styles.dayLabel}>{day}</Text>
+                  ))
+              )}
             </View>
           </SurfaceCard>
         </View>

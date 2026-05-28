@@ -87,11 +87,15 @@ CREATE TABLE medications (
                              dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
                              name VARCHAR(255) NOT NULL,
                              dosage VARCHAR(100),
-                             start_time VARCHAR(50) NOT NULL, -- Guarda o texto do horário (ex: "15:00:00")
+                             compartment INTEGER NOT NULL CHECK (compartment > 0), -- ✅ Mapeia fisicamente o motor/gaveta no hardware (ex: Gaveta 1, 2, 3...)
+                             start_time VARCHAR(50) NOT NULL,
                              end_date TIMESTAMP WITH TIME ZONE,
                              is_continuous BOOLEAN DEFAULT false,
                              interval_hours INTEGER NOT NULL,
-                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- ✅ Trava de Segurança: Impede que o usuário atribua dois remédios ativos para a mesma gaveta no mesmo aparelho
+                             CONSTRAINT unique_compartment_per_dispenser UNIQUE (dispenser_id, compartment)
 );
 
 -- 3. Recria a tabela de histórico apontando direto para a nova tabela de medicamentos

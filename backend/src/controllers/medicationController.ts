@@ -68,24 +68,76 @@ export const getHistory = async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await pool.query(
+    const tableProbe = await pool.query(
         `SELECT
-           h.id,
-           m.name as medication_name,
-           h.taken_at,
-           h.scheduled_at,
-           CASE
-             WHEN h.taken_at IS NOT NULL AND h.taken_at <= h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_on_time'
-             WHEN h.taken_at IS NOT NULL AND h.taken_at > h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_late'
-             WHEN h.taken_at IS NULL AND h.scheduled_at <= NOW() THEN 'missed'
-             ELSE 'pending'
-             END as status
-         FROM dose_history h
-                JOIN medications m ON h.medication_id = m.id
-         WHERE h.dispenser_id = $1
-           AND DATE(h.scheduled_at AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
-         ORDER BY h.scheduled_at ASC`,
-        [dispenserId] // <--- AQUI ESTÁ O PARÂMETRO $1!
+           to_regclass('public.dose_history') IS NOT NULL AS has_old_history,
+           to_regclass('public.medication_intake_history') IS NOT NULL AS has_new_history`
+    );
+
+    const hasOldHistory = Boolean(tableProbe.rows[0]?.has_old_history);
+    const hasNewHistory = Boolean(tableProbe.rows[0]?.has_new_history);
+
+    const historySources: string[] = [];
+
+    if (hasOldHistory) {
+      historySources.push(`
+        SELECT
+          h.id,
+          h.medication_id,
+          m.name AS medication_name,
+          h.taken_at AS taken_at,
+          h.scheduled_at AS scheduled_at,
+          CASE
+            WHEN h.taken_at IS NOT NULL AND h.taken_at <= h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_on_time'
+            WHEN h.taken_at IS NOT NULL AND h.taken_at > h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_late'
+            WHEN h.taken_at IS NULL AND h.scheduled_at <= NOW() THEN 'missed'
+            ELSE 'pending'
+          END AS status
+        FROM dose_history h
+        JOIN medications m ON h.medication_id = m.id
+        WHERE h.dispenser_id = $1
+      `);
+    }
+
+    if (hasNewHistory) {
+      historySources.push(`
+        SELECT
+          h.id,
+          h.medication_id,
+          m.name AS medication_name,
+          h.intake_time AS taken_at,
+          h.scheduled_time AS scheduled_at,
+          CASE
+            WHEN h.intake_time IS NOT NULL AND h.intake_time <= h.scheduled_time + INTERVAL '30 minutes' THEN 'taken_on_time'
+            WHEN h.intake_time IS NOT NULL AND h.intake_time > h.scheduled_time + INTERVAL '30 minutes' THEN 'taken_late'
+            WHEN h.intake_time IS NULL AND h.scheduled_time <= NOW() THEN 'missed'
+            ELSE 'pending'
+          END AS status
+        FROM medication_intake_history h
+        JOIN medications m ON h.medication_id = m.id
+        WHERE m.dispenser_id = $1
+      `);
+    }
+
+    if (historySources.length === 0) {
+      return res.status(500).json({ error: 'Nenhuma tabela de histórico foi encontrada no banco.' });
+    }
+
+    const result = await pool.query(
+        `
+         SELECT
+           history.id,
+           history.medication_name,
+           history.taken_at,
+           history.scheduled_at,
+           history.status
+         FROM (
+           ${historySources.join(' UNION ALL ')}
+         ) history
+         WHERE DATE(history.scheduled_at AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
+         ORDER BY history.scheduled_at ASC
+        `,
+        [dispenserId]
     );
 
     res.status(200).json(result.rows);
