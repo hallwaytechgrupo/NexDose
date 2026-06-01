@@ -1,4 +1,5 @@
-import 'dotenv/config';
+// app.config.js (Substitua todo o arquivo por este)
+require('dotenv').config();
 
 export default {
   expo: {
@@ -7,19 +8,22 @@ export default {
     scheme: "nexdose",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./src/assets/ndIcon.png",
+    icon: "./src/assets/img/ndIcon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false, // Mantido em false para garantir compatibilidade com módulos nativos atuais
+    newArchEnabled: false,
 
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.nexdose.mobile",
-      googleServicesFile: "./GoogleService-Info.plist"
+      //googleServicesFile: "./GoogleService-Info.plist",
+      config: {
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || "SUA_CHAVE_AQUI", // 🔥 Adicione a string direta aqui se o dotenv falhar
+      }
     },
 
     android: {
       package: "com.nexdose.mobile",
-      googleServicesFile: "./google-services.json",
+      //googleServicesFile: "./google-services.json",
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
       adaptiveIcon: {
@@ -28,7 +32,7 @@ export default {
       },
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+          apiKey: process.env.GOOGLE_MAPS_API_KEY || "SUA_CHAVE_AQUI", // 🔥 Adicione a string direta aqui para testar
         }
       }
     },
