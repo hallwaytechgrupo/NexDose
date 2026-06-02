@@ -85,6 +85,12 @@ struct EstadoDose {
   bool confirmada_pela_gaveta;
 };
 
+struct DoseEmFila {
+  int numeroServo;    // 0, 1 ou 2 (índice do servo)
+  int doseIndex;      // Índice da dose
+  String nome;        // Nome do medicamento
+};
+
 // ============================================================================
 // VARIÁVEIS GLOBAIS
 // ============================================================================
@@ -106,6 +112,14 @@ unsigned long ultima_sincronizacao_ntp = 0;
 const unsigned long INTERVALO_SINCRONIZACAO = 3600000;
 bool hora_sincronizada = false;
 int ultima_hora_verificada = -1;
+
+// FILA DE DOSES E SINCRONIZAÇÃO DE SERVO MOTORS
+const int MAX_DOSES_FILA = 10;
+DoseEmFila filaDoses[MAX_DOSES_FILA];
+int totalDosesNaFila = 0;
+unsigned long tempo_fim_movimento_servo = 0;  // Rastreia quando o servo termina de se mover
+bool servo_em_movimento = false;                // Flag indicando se algum servo está se movendo
+const unsigned long TEMPO_MINIMO_SERVO = 2000; // Tempo mínimo que servo leva para se mover (ms)
 
 // WIFI PROVISIONING
 WebServer webServer(WEBSERVER_PORT);
@@ -613,6 +627,77 @@ void processarConfiguracao(const char* jsonPayload) {
 }
 
 // ============================================================================
+// FUNÇÕES DE GERENCIAMENTO DE FILA DE DOSES (Sincronização de Servo Motors)
+// ============================================================================
+
+/**
+ * Adiciona uma dose à fila para execução sequencial
+ * Garante que servos nunca serão acionados simultaneamente
+ */
+void adicionarDoseAFila(int numeroServo, int doseIndex, const String& nome) {
+  if (totalDosesNaFila >= MAX_DOSES_FILA) {
+    Serial.printf("⚠️  ERRO: Fila de doses cheia! Não foi possível adicionar: %s\n", nome.c_str());
+    return;
+  }
+  
+  filaDoses[totalDosesNaFila].numeroServo = numeroServo;
+  filaDoses[totalDosesNaFila].doseIndex = doseIndex;
+  filaDoses[totalDosesNaFila].nome = nome;
+  totalDosesNaFila++;
+  
+  Serial.printf("✓ Dose adicionada à fila (%d doses pendentes): %s (Servo %d)\n", 
+                totalDosesNaFila, nome.c_str(), numeroServo + 1);
+}
+
+/**
+ * Processa a fila de doses, garantindo execução sequencial
+ * Chama esta função regularmente no loop principal
+ */
+void processarFilaDoses() {
+  // Se nenhuma dose na fila, retorna
+  if (totalDosesNaFila == 0) {
+    servo_em_movimento = false;
+    return;
+  }
+  
+  // Se servo está em movimento, aguarda terminar
+  if (servo_em_movimento) {
+    if (millis() < tempo_fim_movimento_servo) {
+      // Servo ainda está se movendo
+      return;
+    } else {
+      // Servo terminou! Aguarda um pouco antes de iniciar próximo
+      servo_em_movimento = false;
+      delay(500); // Pequena pausa entre servos
+      Serial.println("→ Servo finalizou. Aguardando antes do próximo...");
+    }
+  }
+  
+  // Se chegou aqui, pode disparar próxima dose
+  if (totalDosesNaFila > 0) {
+    DoseEmFila* dose = &filaDoses[0];
+    
+    Serial.printf("\n🎯 [FILA] Processando dose: %s (Servo %d, Índice %d)\n", 
+                  dose->nome.c_str(), dose->numeroServo + 1, dose->doseIndex);
+    
+    // Disparar a dose
+    dispararDoseInterno(dose->numeroServo, dose->doseIndex, dose->nome);
+    
+    // Marcar servo como em movimento
+    servo_em_movimento = true;
+    tempo_fim_movimento_servo = millis() + TEMPO_MINIMO_SERVO;
+    
+    // Remover dose da fila
+    for (int i = 0; i < totalDosesNaFila - 1; i++) {
+      filaDoses[i] = filaDoses[i + 1];
+    }
+    totalDosesNaFila--;
+    
+    Serial.printf("✓ Doses restantes na fila: %d\n\n", totalDosesNaFila);
+  }
+}
+
+// ============================================================================
 // FUNÇÕES DE SERVO MOTOR
 // ============================================================================
 void inicializarServos() {
@@ -642,7 +727,12 @@ void inicializarServos() {
   Serial.println("Servo motores inicializados!");
 }
 
-void dispararDose(int numeroServo, int doseIndex) {
+/**
+ * Versão interna da função disparar dose
+ * Realiza o acionamento efetivo do servo motor
+ * ATENÇÃO: Esta função é chamada apenas pela fila de processamento
+ */
+void dispararDoseInterno(int numeroServo, int doseIndex, const String& nomeMedicamento) {
   if (numeroServo < 0 || numeroServo >= TOTAL_SERVOS) {
     Serial.printf("Erro: Servo %d inválido!\n", numeroServo);
     return;
@@ -653,7 +743,8 @@ void dispararDose(int numeroServo, int doseIndex) {
     return;
   }
 
-  Serial.printf("Disparando dose: Servo %d, Índice %d\n", numeroServo + 1, doseIndex);
+  Serial.printf("→ Acionando servo motor %d com dose índice %d (%s)\n", 
+                numeroServo + 1, doseIndex, nomeMedicamento.c_str());
 
   int anguloAlvo = doseIndex * config.angulo_por_dose;
   
@@ -661,28 +752,54 @@ void dispararDose(int numeroServo, int doseIndex) {
     anguloAlvo = 180;
   }
 
+  // ACIONAMENTO DO SERVO
   tocarBuzzer(200, 1);
   servos[numeroServo].write(anguloAlvo);
-  delay(1000);
+  delay(1000); // Aguarda servo terminar movimento
 
+  // Salvar posição em EEPROM
   ultimo_index_servo[numeroServo] = anguloAlvo;
   EEPROM.writeInt(ADDR_SERVO1_INDEX + (numeroServo * 4), anguloAlvo);
   EEPROM.commit();
 
+  // Atualizar estado da dose ativa
   dose_ativa.disco = numeroServo + 1;
   dose_ativa.dose_index = doseIndex;
+  dose_ativa.nome = nomeMedicamento;
   dose_ativa.timestamp_dispensada = millis();
   dose_ativa.confirmada_pela_gaveta = false;
 
   delay(200);
-  tocarBuzzer(500, 3);
+  tocarBuzzer(500, 3); // Buzzer de confirmação
 
+  // LED de medicação disponível
   medicacao_disponivel = true;
   digitalWrite(LED_MEDICACAO_PIN, HIGH);
 
+  // Publicar evento MQTT
   publicarDoseDispensada();
 
-  Serial.println("Dose dispensada com sucesso!");
+  Serial.printf("✓ Dose dispensada com sucesso! Servo %d pronto.\n\n", numeroServo + 1);
+}
+
+/**
+ * Interface pública para disparar dose
+ * Adiciona a dose à fila para execução sequencial
+ * Esta é a função que deve ser chamada por outras partes do código
+ */
+void dispararDose(int numeroServo, int doseIndex) {
+  if (numeroServo < 0 || numeroServo >= TOTAL_SERVOS) {
+    Serial.printf("✗ Erro: Servo %d inválido!\n", numeroServo);
+    return;
+  }
+
+  if (doseIndex < 1 || doseIndex > config.total_divisorias) {
+    Serial.printf("✗ Erro: Índice de dose %d fora do intervalo!\n", doseIndex);
+    return;
+  }
+
+  // Adicionar à fila (nome será preenchido depois)
+  adicionarDoseAFila(numeroServo, doseIndex, "Medicação");
 }
 
 // ============================================================================
@@ -1002,8 +1119,13 @@ void executarDoseAgendada(DoseAgendada* agenda) {
   
   int numeroServo = agenda->disco - 1;
   
-  Serial.printf("→ Disparando dose agendada...\n");
-  dispararDose(numeroServo, agenda->dose_index);
+  Serial.printf("\n📋 [AGENDAMENTO] Adicionando dose à fila de execução...\n");
+  Serial.printf("   Medicamento: %s\n", agenda->nome.c_str());
+  Serial.printf("   Servo: %d | Dose Index: %d\n\n", numeroServo + 1, agenda->dose_index);
+  
+  // Adicionar à fila em vez de disparar imediatamente
+  adicionarDoseAFila(numeroServo, agenda->dose_index, agenda->nome);
+  
   publicarDoseAgendadaExecutada(agenda);
 }
 
@@ -1133,6 +1255,9 @@ void loop() {
     manterSincronizacaoHora();
     verificarAgendamentos();
   }
+
+  // ⭐ PROCESSAR FILA DE DOSES - Garante execução sequencial dos servos
+  processarFilaDoses();
 
   // Verificar medicação na gaveta
   verificarMedicacaoNaGaveta();
