@@ -15,6 +15,13 @@ interface Pharmacy {
   longitude: number;
 }
 
+interface PharmacyApiResponse {
+  results?: Pharmacy[];
+  error?: string;
+  providerStatus?: string;
+  providerMessage?: string;
+}
+
 const FastMarker = ({
                       pharmacy,
                       pinColor,
@@ -68,7 +75,8 @@ export function PharmacyScreen() {
   const {
     data: pharmacies = [],
     isLoading: isFetchingPharmacies,
-    isError
+    isError,
+    error,
   } = useQuery({
     queryKey: ['pharmacies', location?.coords.latitude, location?.coords.longitude, searchQuery],
     enabled: !!location, // A requisição só sai do celular se o GPS já tiver uma coordenada
@@ -77,13 +85,14 @@ export function PharmacyScreen() {
     queryFn: async () => {
       const backendUrl = `${getApiBaseUrl()}/api/farmacias?lat=${location!.coords.latitude}&lng=${location!.coords.longitude}&keyword=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(backendUrl);
+      const json = (await response.json().catch(() => null)) as PharmacyApiResponse | null;
 
       if (!response.ok) {
-        throw new Error('Falha na comunicação com o servidor de mapas');
+        const details = json?.providerMessage || json?.error;
+        throw new Error(details || 'Falha na comunicação com o servidor de mapas');
       }
 
-      const json = await response.json();
-      return json.results as Pharmacy[];
+      return Array.isArray(json?.results) ? json.results : [];
     }
   });
 
@@ -115,7 +124,9 @@ export function PharmacyScreen() {
         <AppScreen>
           <View style={styles.center}>
             <Text style={{ color: 'red', textAlign: 'center', padding: 20 }}>
-              Você está offline ou nossos servidores estão indisponíveis no momento.
+              {error instanceof Error
+                ? error.message
+                : 'Você está offline ou nossos servidores estão indisponíveis no momento.'}
             </Text>
           </View>
         </AppScreen>
