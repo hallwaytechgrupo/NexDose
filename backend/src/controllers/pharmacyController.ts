@@ -135,6 +135,11 @@ export const getNearbyPharmacies = async (
       Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 5000
     );
 
+    if (data.status === 'ZERO_RESULTS') {
+      cacheSet(cacheKey, []);
+      return res.json({ status: 'OK', results: [] });
+    }
+
     if (data.status !== 'OK' || !Array.isArray(data.results)) {
       return res.status(502).json({
         error: 'Erro ao buscar farmácias.',
