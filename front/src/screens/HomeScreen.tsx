@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View, ActivityIndicator, Animated, Easing } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useQuery } from "@tanstack/react-query";
-import { adherence, quickActions, TabKey } from "../data/mockData";
+import { quickActions, TabKey } from "../data/mockData";
 import {
   AppScreen,
   GlassCard,
@@ -17,6 +16,107 @@ interface HomeScreenProps {
   token: string;
   dispenserId: number | null;
   onNavigate: (tab: TabKey) => void;
+}
+
+type MedicationSchedule = {
+  name?: string;
+  dosage?: string;
+  interval?: number | string;
+  interval_hours?: number | string;
+  nextDose?: string;
+  start_time?: string;
+  startTime?: string;
+  scheduleStartAt?: string;
+  schedule_start_at?: string;
+  endDate?: string | null;
+  end_date?: string | null;
+  isContinuous?: boolean;
+  is_continuous?: boolean;
+};
+
+type WeekScheduleDay = {
+  label: string;
+  count: number;
+  isToday: boolean;
+};
+
+const WEEK_LABELS = ["S", "T", "Q", "Q", "S", "S", "D"];
+const MIN_BAR_HEIGHT = 24;
+const MAX_BAR_HEIGHT = 110;
+
+function getWeekStart(date: Date): Date {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getDoseDateFromTime(time: string, baseDate: Date): Date | null {
+  const [hourStr, minuteStr] = time.split(":");
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr) || 0;
+
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return null;
+
+  const doseDate = new Date(baseDate);
+  doseDate.setHours(hour, minute, 0, 0);
+  return doseDate;
+}
+
+function buildWeeklySchedule(medications: MedicationSchedule[], now = new Date()): WeekScheduleDay[] {
+  const weekStart = getWeekStart(now);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  const todayIndex = Math.floor((new Date(now).setHours(0, 0, 0, 0) - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+  const counts = Array.from({ length: 7 }, () => 0);
+
+  medications.forEach((med) => {
+    const nextDoseStr = med.nextDose || med.start_time || med.startTime;
+    const scheduleStartValue = med.scheduleStartAt || med.schedule_start_at;
+    const intervalHours = Number(med.interval || med.interval_hours) || 8;
+    const endDateValue = med.endDate || med.end_date;
+    const isContinuous = med.isContinuous ?? med.is_continuous ?? true;
+
+    if (!nextDoseStr || nextDoseStr === "--:--" || nextDoseStr.includes("NaN") || intervalHours <= 0) return;
+
+    const endDate = endDateValue ? new Date(endDateValue) : null;
+    if (!isContinuous && endDate && endDate < weekStart) return;
+
+    let cursor: Date | null;
+    if (nextDoseStr.includes("T") || nextDoseStr.includes("-")) {
+      const parsed = new Date(nextDoseStr);
+      cursor = Number.isNaN(parsed.getTime()) ? null : parsed;
+    } else if (scheduleStartValue) {
+      const parsedStart = new Date(scheduleStartValue);
+      cursor = Number.isNaN(parsedStart.getTime()) ? null : parsedStart;
+    } else {
+      cursor = getDoseDateFromTime(nextDoseStr, weekStart);
+      if (cursor) cursor.setDate(cursor.getDate() - 1);
+    }
+
+    if (!cursor) return;
+
+    while (cursor < weekStart) {
+      cursor.setHours(cursor.getHours() + intervalHours);
+    }
+
+    while (cursor < weekEnd) {
+      if (!endDate || cursor <= endDate || isContinuous) {
+        const dayIndex = Math.floor((cursor.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+        if (dayIndex >= 0 && dayIndex < 7) counts[dayIndex] += 1;
+      }
+      cursor.setHours(cursor.getHours() + intervalHours);
+    }
+  });
+
+  return counts.map((count, index) => ({
+    label: WEEK_LABELS[index],
+    count,
+    isToday: index === todayIndex,
+  }));
 }
 
 export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) {
@@ -38,9 +138,11 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
     queryFn: async () => {
       console.log("➔ DISPARANDO API: Chamando getMedications via React Query...");
       const meds = await getMedications(token, dispenserId!);
+      const weeklySchedule = buildWeeklySchedule(meds as MedicationSchedule[]);
+      const todayScheduleCount = weeklySchedule.find((day) => day.isToday)?.count ?? 0;
 
       if (!meds || !Array.isArray(meds) || meds.length === 0) {
-        return { nextMed: null, countdown: "--:--" };
+        return { nextMed: null, countdown: "--:--", weeklySchedule, todayScheduleCount };
       }
 
       // --- O seu cálculo matemático exato continua aqui dentro ---
@@ -93,13 +195,20 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
         }
       });
 
-      return { nextMed: absoluteClosestMed, countdown: calculatedCountdown };
+      return {
+        nextMed: absoluteClosestMed,
+        countdown: calculatedCountdown,
+        weeklySchedule,
+        todayScheduleCount,
+      };
     }
   });
 
   // Variáveis de fácil acesso derivadas do React Query
   const nextMed = data?.nextMed;
   const countdown = data?.countdown || "--:--h";
+  const weeklySchedule = data?.weeklySchedule ?? buildWeeklySchedule([]);
+  const maxScheduleCount = Math.max(...weeklySchedule.map((item) => item.count), 1);
 
   // 3. EFEITO VISUAL (Mantido! Reage ao dado que veio do React Query)
   useEffect(() => {
@@ -170,25 +279,44 @@ export function HomeScreen({ token, dispenserId, onNavigate }: HomeScreenProps) 
 
           <SurfaceCard>
             <View style={styles.chartHeader}>
-              <Text style={styles.cardTitle}>Aderencia semanal</Text>
-              <Feather name="arrow-up-circle" size={24} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Agendamentos da semana</Text>
+                <Text style={styles.chartSubtitle}>
+                  Hoje: {data?.todayScheduleCount ?? 0} horarios
+                </Text>
+              </View>
+              <Feather name="calendar" size={24} color={colors.primary} />
             </View>
             <View style={styles.chartRow}>
-              {adherence.map((value, index) => (
+              {weeklySchedule.map((day, index) => {
+                const height = day.count === 0
+                  ? MIN_BAR_HEIGHT
+                  : MIN_BAR_HEIGHT + (day.count / maxScheduleCount) * (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT);
+
+                return (
                   <View
-                      key={`${value}-${index}`}
+                      key={`${day.label}-${index}`}
                       style={[
                         styles.bar,
-                        { height: value },
-                        index === 4 ? styles.barActive : styles.barIdle,
+                        { height },
+                        day.isToday ? styles.barActive : styles.barIdle,
+                        day.count === 0 ? styles.barEmpty : undefined,
                       ]}
-                  />
-              ))}
+                  >
+                    <Text style={[styles.barValue, day.isToday ? styles.barValueActive : undefined]}>
+                      {day.count}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
             <View style={styles.daysRow}>
-              {["S", "T", "Q", "Q", "S", "S", "D"].map((day, index) => (
-                  <Text key={`${day}-${index}`} style={styles.dayLabel}>
-                    {day}
+              {weeklySchedule.map((day, index) => (
+                  <Text
+                      key={`${day.label}-${index}`}
+                      style={[styles.dayLabel, day.isToday ? styles.dayLabelActive : undefined]}
+                  >
+                    {day.label}
                   </Text>
               ))}
             </View>
@@ -275,12 +403,17 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: 24, fontWeight: "800" },
   cardBody: { color: colors.textMuted, fontSize: 14, marginTop: 8 },
   chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  chartSubtitle: { color: colors.textMuted, fontSize: 12, fontWeight: "700", marginTop: 4 },
   chartRow: { height: 110, flexDirection: "row", alignItems: "flex-end", gap: 8 },
-  bar: { flex: 1, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  bar: { flex: 1, minHeight: MIN_BAR_HEIGHT, borderTopLeftRadius: 12, borderTopRightRadius: 12, alignItems: "center", justifyContent: "flex-start", paddingTop: 6 },
   barIdle: { backgroundColor: colors.primarySoft },
   barActive: { backgroundColor: colors.primary },
+  barEmpty: { opacity: 0.45 },
+  barValue: { color: colors.primary, fontSize: 11, fontWeight: "900" },
+  barValueActive: { color: colors.white },
   daysRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
   dayLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "800" },
+  dayLabelActive: { color: colors.primary, fontSize: 12 },
   sectionBlock: { gap: 16 },
   actionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   actionCard: { width: "47%", backgroundColor: colors.surfaceLowest, borderRadius: radius.lg, paddingVertical: 18, paddingHorizontal: 12, alignItems: "center", gap: 10 },

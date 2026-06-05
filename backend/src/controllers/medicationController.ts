@@ -135,7 +135,7 @@ export const getMedications = async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-        `SELECT id, name, dosage, start_time, end_date, interval_hours, is_continuous
+        `SELECT id, name, dosage, start_time, schedule_start_at, end_date, interval_hours, is_continuous
          FROM medications
          WHERE dispenser_id = $1
          ORDER BY created_at DESC`,
@@ -148,6 +148,7 @@ export const getMedications = async (req: Request, res: Response) => {
       dosage: m.dosage,
       interval: m.interval_hours,
       nextDose: m.start_time, // Retorna "15:00:00" para o front aplicar substring(0,5) -> "15:00"
+      scheduleStartAt: m.schedule_start_at,
       endDate: m.end_date,
       isContinuous: m.is_continuous,
     }));
