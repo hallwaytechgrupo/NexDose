@@ -11,6 +11,9 @@ import caregiverRoutes from './routes/caregiverRoutes';
 import dispenserRoutes from './routes/dispenserRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
 import userRoutes from './routes/userRoute';
+import iotRoutes from './routes/iotRoutes';
+import { startMqttIntegration, setSchedulerTicker, stopMqttIntegration } from './services/mqttClient';
+import { startScheduler } from './services/schedulerService';
 
 dotenv.config();
 
@@ -26,6 +29,7 @@ function requireEnv(name: string): string {
 requireEnv('JWT_SECRET');
 
 const app = express();
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
@@ -33,6 +37,22 @@ app.use((req, _res, next) => {
 });
 app.use(cors());
 app.use(express.json());
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/db', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (_error) {
+    res.status(503).json({
+      status: 'error',
+      database: 'unavailable',
+    });
+  }
+});
 
 // Static uploads (use a Docker volume, e.g. /data/uploads).
 const uploadsDir = process.env.UPLOADS_DIR
@@ -48,19 +68,19 @@ app.use('/api/dispensers/:dispenserId/medications', dispenserMedicationRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/dispensers', dispenserRoutes);
 app.use('/api/farmacias', pharmacyRoutes);
+app.use('/api/iot', iotRoutes);
 app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
 
 app.use(userRoutes);
-
-app.listen(3000, () => console.log("🚀 Backend rodando na porta 3000"));
-
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const startServer = async () => {
   try {
     const dbClient = await pool.connect();
     console.log('DB connection OK');
     dbClient.release();
+
+    await startMqttIntegration();
+    setSchedulerTicker(startScheduler());
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Backend listening on port ${PORT}`);
@@ -71,5 +91,13 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+process.on('SIGTERM', () => {
+  void stopMqttIntegration().finally(() => process.exit(0));
+});
+
+process.on('SIGINT', () => {
+  void stopMqttIntegration().finally(() => process.exit(0));
+});
 
 startServer();

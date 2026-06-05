@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const API_BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL ;
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
 // --- INTERFACES ---
 
@@ -101,6 +101,7 @@ export async function register(payload: {
   email: string;
   phone: string;
   password: string;
+  role: "sponsor" | "caregiver";
 }): Promise<AuthUser> {
   return request<AuthUser>("/auth/register", {
     method: "POST",

@@ -9,7 +9,7 @@ if (!jwtSecret) {
 }
 
 export const register = async (req: Request, res: Response) => {
-    const { name, email, password, role } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
     // ✅ CORREÇÃO 1: Validação direta usando a role vinda da requisição
     if (!role || !["sponsor", "caregiver"].includes(role.toLowerCase())) {
@@ -21,8 +21,8 @@ export const register = async (req: Request, res: Response) => {
 
         // ✅ CORREÇÃO 2: Adicionado RETURNING para capturar e retornar o usuário criado sem travar
         const newUser = await pool.query(
-            "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role",
-            [name, email, hashedPassword, role.toLowerCase()]
+            "INSERT INTO users (name, email, phone, password_hash, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, phone, role",
+            [name, email, phone, hashedPassword, role.toLowerCase()]
         );
 
         // ✅ REMOVIDO: Toda a lógica de tradução artificial. Retorna direto o dado limpo do banco.

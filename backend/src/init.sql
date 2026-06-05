@@ -88,20 +88,43 @@ CREATE TABLE medications (
                              name VARCHAR(255) NOT NULL,
                              dosage VARCHAR(100),
                              start_time VARCHAR(50) NOT NULL, -- Guarda o texto do horário (ex: "15:00:00")
+                             schedule_start_at TIMESTAMP WITH TIME ZONE NOT NULL,
                              end_date TIMESTAMP WITH TIME ZONE,
                              is_continuous BOOLEAN DEFAULT false,
                              interval_hours INTEGER NOT NULL,
                              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Recria a tabela de histórico apontando direto para a nova tabela de medicamentos
-CREATE TABLE medication_intake_history (
+-- Tabela de histórico/agenda de doses e execução de comandos MQTT.
+CREATE TABLE IF NOT EXISTS medication_intake_history (
                                            id SERIAL PRIMARY KEY,
+                                           dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
                                            medication_id INTEGER NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
                                            scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
                                            intake_time TIMESTAMP WITH TIME ZONE,
-                                           status VARCHAR(50) NOT NULL CHECK (status IN ('taken', 'missed', 'pending')),
-                                           notes TEXT
+                                           status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'dispatched', 'taken', 'missed', 'failed')),
+                                           command_id UUID UNIQUE,
+                                           command_topic TEXT,
+                                           command_payload JSONB,
+                                           sent_at TIMESTAMP WITH TIME ZONE,
+                                           acknowledged_at TIMESTAMP WITH TIME ZONE,
+                                           attempts INTEGER NOT NULL DEFAULT 0,
+                                           last_error TEXT,
+                                           notes TEXT,
+                                           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS device_events (
+                                             id SERIAL PRIMARY KEY,
+                                             topic TEXT NOT NULL,
+                                             event_type VARCHAR(100) NOT NULL,
+                                             dispenser_id INTEGER REFERENCES dispensers(id) ON DELETE SET NULL,
+                                             medication_id INTEGER REFERENCES medications(id) ON DELETE SET NULL,
+                                             payload JSONB NOT NULL,
+                                             processed BOOLEAN NOT NULL DEFAULT false,
+                                             processed_at TIMESTAMP WITH TIME ZONE,
+                                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ---
@@ -111,6 +134,9 @@ CREATE INDEX IF NOT EXISTS idx_dispensers_sponsor_id ON dispensers (sponsor_id);
 CREATE INDEX IF NOT EXISTS idx_device_access_user_id ON device_access (user_id);
 CREATE INDEX IF NOT EXISTS idx_medications_dispenser_id ON medications (dispenser_id);
 CREATE INDEX IF NOT EXISTS idx_history_medication_id ON medication_intake_history (medication_id);
+CREATE INDEX IF NOT EXISTS idx_history_dispenser_id ON medication_intake_history (dispenser_id);
+CREATE INDEX IF NOT EXISTS idx_history_status_scheduled ON medication_intake_history (status, scheduled_time);
+CREATE INDEX IF NOT EXISTS idx_device_events_dispenser_id ON device_events (dispenser_id);
 
 
 -- =========================================================================

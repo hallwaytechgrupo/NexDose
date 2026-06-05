@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      target: dev
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      UPLOADS_DIR: /app/backend/uploads
+    volumes:
+      - ./backend:/app/backend
+      - backend_node_modules:/app/backend/node_modules
+      - backend_uploads:/app/backend/uploads
+
+volumes:
+  backend_node_modules:

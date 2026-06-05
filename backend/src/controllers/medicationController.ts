@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
 import pool from '../db';
+import {
+  deleteMedicationSchedule,
+  replaceMedicationSchedule,
+} from '../services/medicationScheduleService';
 
 interface CreateMedicationRequest {
   name: string;
@@ -72,23 +76,48 @@ export const getHistory = async (req: Request, res: Response) => {
         `SELECT
            h.id,
            m.name as medication_name,
-           h.taken_at,
-           h.scheduled_at,
-           CASE
-             WHEN h.taken_at IS NOT NULL AND h.taken_at <= h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_on_time'
-             WHEN h.taken_at IS NOT NULL AND h.taken_at > h.scheduled_at + INTERVAL '30 minutes' THEN 'taken_late'
-             WHEN h.taken_at IS NULL AND h.scheduled_at <= NOW() THEN 'missed'
-             ELSE 'pending'
-             END as status
-         FROM dose_history h
+           h.intake_time,
+           h.scheduled_time,
+           h.status,
+           h.command_id,
+           h.command_topic,
+           h.command_payload,
+           h.sent_at,
+           h.acknowledged_at,
+           h.attempts,
+           h.last_error
+         FROM medication_intake_history h
                 JOIN medications m ON h.medication_id = m.id
          WHERE h.dispenser_id = $1
-           AND DATE(h.scheduled_at AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
-         ORDER BY h.scheduled_at ASC`,
+           AND DATE(h.scheduled_time AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
+         ORDER BY h.scheduled_time ASC`,
         [dispenserId] // <--- AQUI ESTÁ O PARÂMETRO $1!
     );
 
-    res.status(200).json(result.rows);
+    const history = result.rows.map((row) => {
+      const scheduledTime = new Date(row.scheduled_time);
+      const intakeTime = row.intake_time ? new Date(row.intake_time) : null;
+
+      let status = row.status;
+      if (status === 'taken' && intakeTime) {
+        status = intakeTime <= new Date(scheduledTime.getTime() + 30 * 60 * 1000)
+          ? 'taken_on_time'
+          : 'taken_late';
+      }
+
+      return {
+        id: String(row.id),
+        medicationName: row.medication_name,
+        scheduledAt: row.scheduled_time,
+        intakeAt: row.intake_time,
+        status,
+        commandId: row.command_id,
+        attempts: row.attempts,
+        lastError: row.last_error,
+      };
+    });
+
+    res.status(200).json(history);
   } catch (error) {
     console.error('Erro ao buscar histórico de doses:', error);
     res.status(500).json({ error: 'Erro interno ao buscar o histórico.' });
@@ -165,61 +194,20 @@ export const createMedication = async (
   try {
     // 1. Cria a "Regra" do medicamento
     const medResult = await pool.query(
-        `INSERT INTO medications (dispenser_id, name, dosage, start_time, end_date, interval_hours, is_continuous)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [dispenserId, name, dosage, startTime, finalEndDate, intervalHours, isContinuous]
+        `INSERT INTO medications (dispenser_id, name, dosage, start_time, schedule_start_at, end_date, interval_hours, is_continuous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [dispenserId, name, dosage, startTime, parsedStartDate, finalEndDate, intervalHours, isContinuous]
     );
 
     const newMedication = medResult.rows[0];
-    const medicationId = newMedication.id;
-
-    // 2. Calcula as datas das próximas doses
-    const doses: Date[] = [];
-    let currentDoseTime = new Date(startDate);
-
-    // Teto máximo de 30 dias para não sobrecarregar o banco
-    const maxDays = 30;
-    const limitByDays = new Date(Date.now() + maxDays * 24 * 60 * 60 * 1000);
-    let limitDate = limitByDays;
-
-    if (!isContinuous && finalEndDate) {
-      const parsedEndDate = new Date(finalEndDate);
-      // Se tiver data final e for menor que 30 dias, respeita a data final do remédio
-      limitDate = parsedEndDate < limitByDays ? parsedEndDate : limitByDays;
-    }
-
-    // Trava de segurança extra de 200 doses máximas no array
-    const maxDosesLimit = 200;
-    let doseCount = 0;
-
-    while (currentDoseTime <= limitDate && doseCount < maxDosesLimit) {
-      doses.push(new Date(currentDoseTime));
-
-      // Soma o intervalo de horas no tempo atual
-      currentDoseTime = new Date(currentDoseTime.getTime() + intervalHours * 60 * 60 * 1000);
-      doseCount++;
-    }
-
-    // 3. Salva todas as doses de uma vez (Bulk Insert)
-    if (doses.length > 0) {
-      const values: any[] = [];
-      const placeholders: string[] = [];
-      let paramIndex = 1;
-
-      doses.forEach((dose) => {
-        placeholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
-        // Aqui passamos a 'dose' direto, sem .toISOString()
-        values.push(dispenserId, medicationId, dose);
-      });
-
-      // Gera a query final de forma segura contra SQL Injection
-      const query = `
-        INSERT INTO dose_history (dispenser_id, medication_id, scheduled_at)
-        VALUES ${placeholders.join(', ')}
-      `;
-
-      await pool.query(query, values);
-    }
+    await replaceMedicationSchedule({
+      dispenserId,
+      medicationId: newMedication.id,
+      scheduleStartAt: parsedStartDate.toISOString(),
+      intervalHours,
+      endDate: finalEndDate,
+      isContinuous,
+    });
 
     return res.status(201).json(newMedication);
   } catch (error) {
@@ -256,6 +244,8 @@ export const updateMedication = async (
       const startTime = new Date(startDate).toLocaleTimeString('pt-BR', { hour12: false });
       fields.push(`start_time = $${i++}`);
       values.push(startTime);
+      fields.push(`schedule_start_at = $${i++}`);
+      values.push(new Date(startDate));
     }
 
     if (isContinuous === true) {
@@ -275,6 +265,17 @@ export const updateMedication = async (
     );
 
     if (result.rows.length === 0) return res.status(404).json({ error: 'Medicamento não encontrado.' });
+
+    if (startDate !== undefined || intervalHours !== undefined || endDate !== undefined || isContinuous !== undefined) {
+      await replaceMedicationSchedule({
+        dispenserId,
+        medicationId,
+        scheduleStartAt: result.rows[0].schedule_start_at,
+        intervalHours: result.rows[0].interval_hours,
+        endDate: result.rows[0].end_date,
+        isContinuous: result.rows[0].is_continuous,
+      });
+    }
 
     return res.status(200).json({ message: 'Atualizado com sucesso!', medication: result.rows[0] });
   } catch (error) {
@@ -299,6 +300,7 @@ export const deleteMedication = async (req: Request, res: Response) => {
         [medicationId, dispenserId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Não encontrado.' });
+    await deleteMedicationSchedule(medicationId);
     return res.status(200).json({ message: 'Deletado com sucesso!' });
   } catch (error) {
     return res.status(500).json({ error: 'Erro ao deletar.' });

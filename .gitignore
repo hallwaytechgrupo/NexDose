@@ -1,0 +1,5 @@
+.env
+node_modules/
+backend/dist/
+backend/tmp_check.js
+package-lock.json

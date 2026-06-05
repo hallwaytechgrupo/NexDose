@@ -70,6 +70,7 @@ export default function App() {
     email: string;
     phone: string;
     password: string;
+    role: "sponsor" | "caregiver";
   }) => {
     try {
       await register(payload);
