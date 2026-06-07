@@ -21,6 +21,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/backend/dist ./dist
+COPY src/init.sql ./dist/init.sql
 RUN mkdir -p uploads
 
 EXPOSE 3000

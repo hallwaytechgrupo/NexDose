@@ -25,6 +25,24 @@ let client: MqttClient | null = null;
 let connected = false;
 let schedulerTick: NodeJS.Timeout | null = null;
 
+function describeBrokerUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
+function isLocalBrokerUrl(rawUrl: string) {
+  try {
+    const host = new URL(rawUrl).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === 'mqtt';
+  } catch {
+    return false;
+  }
+}
+
 function parseNumber(value: unknown): number | null {
   const numeric = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : NaN;
   return Number.isFinite(numeric) ? Math.floor(numeric) : null;
@@ -176,7 +194,7 @@ async function attachHandlers(mqttClient: MqttClient) {
 
   mqttClient.on('connect', async () => {
     connected = true;
-    console.log('[mqtt] connected');
+    console.log(`[mqtt] connected to ${describeBrokerUrl(process.env.MQTT_BROKER_URL ?? '')}`);
 
     mqttClient.subscribe([statusTopic, eventTopic], { qos: 1 }, (error) => {
       if (error) {
@@ -225,6 +243,11 @@ export async function startMqttIntegration() {
     return null;
   }
 
+  if (process.env.NODE_ENV === 'production' && isLocalBrokerUrl(brokerUrl)) {
+    console.warn('[mqtt] MQTT_BROKER_URL aponta para broker local/interno em produção. Use um broker público, ex: mqtts://host:8883.');
+  }
+
+  console.log(`[mqtt] starting integration with ${describeBrokerUrl(brokerUrl)}`);
   client = mqtt.connect(brokerUrl, createClientOptions());
   await attachHandlers(client);
 

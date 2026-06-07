@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS device_access (
 -- Tabela de Medicamentos
 -- ✅ UNIFICADA: Agora contém os dados de agendamento diretamente nela
 -- ---
-CREATE TABLE medications (
+CREATE TABLE IF NOT EXISTS medications (
                              id SERIAL PRIMARY KEY,
                              dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
                              name VARCHAR(255) NOT NULL,

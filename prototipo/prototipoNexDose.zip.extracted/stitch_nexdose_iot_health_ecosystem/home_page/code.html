@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#004493",
+                        "on-secondary-container": "#00732a",
+                        "secondary-fixed-dim": "#53e16f",
+                        "surface-bright": "#f8fafb",
+                        "on-secondary-fixed": "#002107",
+                        "on-primary-fixed": "#001a41",
+                        "surface-variant": "#e1e3e4",
+                        "on-primary-container": "#fefcff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#2d1600",
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "outline-variant": "#c1c6d7",
+                        "surface-container": "#eceeef",
+                        "primary-fixed-dim": "#adc6ff",
+                        "secondary-fixed": "#72fe88",
+                        "on-secondary-fixed-variant": "#00531c",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#005bc1",
+                        "secondary": "#006e28",
+                        "tertiary-container": "#ac6300",
+                        "surface-dim": "#d8dadb",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eff1f2",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e6e8e9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f2f4f5",
+                        "primary": "#0058bc",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdcbf",
+                        "background": "#f8fafb",
+                        "on-background": "#191c1d",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary": "#894d00",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "surface": "#f8fafb",
+                        "on-tertiary-fixed-variant": "#6a3b00",
+                        "secondary-container": "#6ffb85",
+                        "primary-fixed": "#d8e2ff",
+                        "outline": "#717786",
+                        "on-surface-variant": "#414755",
+                        "tertiary-fixed-dim": "#ffb874",
+                        "primary-container": "#0070eb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#F8FAFB]/70 backdrop-blur-xl sticky top-0 z-40 transition-all">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional headshot of a smiling young man in a clean studio setting with soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJxOvxl3Lay2f8Wcv1jzknMqOPi2g-9s26nNtKb1VOJwS-Z4T3p0GxW2h2SZMA2KFMeWSxVPpirPWLPt0Z5n9Ks7OVIwB7viQzzeEJmKHGFlmgtxZqQ16KJRJeSTcenALiGVY7GKLPW-82J8M7Cn0kOLdcOXjwzjlxmsIomqU6mHXhZxI0Td949ESMt4veD__ldu8S92pFDvWLJXSC3bxfRfOeUk94NsyQDGcppmLg43stBgGUS2Ic08IWdkV-uPo4xg_ioYOu"/>
+</div>
+<div class="flex flex-col">
+<h1 class="text-xl font-bold text-[#191C1D] tracking-tight">Olá, Marck</h1>
+<div class="flex items-center gap-1.5">
+<span class="text-[11px] font-semibold uppercase tracking-widest text-on-secondary-container bg-secondary-container/30 px-2 py-0.5 rounded-full">Dispenser Online</span>
+<span class="material-symbols-outlined text-[14px] text-secondary animate-pulse" data-icon="wifi">wifi</span>
+</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-[#E6E8E9]/50 transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="p-2 rounded-full hover:bg-[#E6E8E9]/50 transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-8 space-y-12">
+<!-- Hero Unit: Countdown Card -->
+<section class="relative">
+<div class="absolute -top-12 -right-8 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none"></div>
+<div class="absolute -bottom-8 -left-12 w-48 h-48 bg-secondary/10 rounded-full blur-[60px] pointer-events-none"></div>
+<div class="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-8 md:p-12 shadow-[0_12px_40px_0_rgba(25,28,29,0.04)] border border-white/20 relative overflow-hidden">
+<div class="flex flex-col items-center text-center space-y-6">
+<span class="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Próxima dose em</span>
+<div class="relative flex items-center justify-center">
+<!-- Dosage Ring Background -->
+<svg class="w-64 h-64 md:w-80 md:h-80 -rotate-90">
+<circle class="text-surface-variant" cx="50%" cy="50%" fill="transparent" r="48%" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary" cx="50%" cy="50%" fill="transparent" r="48%" stroke="currentColor" stroke-dasharray="1000" stroke-dashoffset="350" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-5xl md:text-7xl font-extrabold tracking-tighter text-on-surface font-headline">02:45h</span>
+<div class="mt-2 flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="medication">medication</span>
+<span class="text-sm font-semibold">Amoxicilina 500mg</span>
+</div>
+</div>
+</div>
+<button class="bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white px-10 py-4 rounded-2xl font-bold text-lg shadow-lg hover:scale-[0.98] transition-all duration-300">
+                        Confirmar Agora
+                    </button>
+</div>
+</div>
+</section>
+<!-- Bento Grid Quick Access & Status -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- IoT Status Card -->
+<div class="md:col-span-1 bg-surface-container-low p-6 rounded-[2rem] flex flex-col justify-between h-full">
+<div class="flex justify-between items-start">
+<div class="bg-white p-3 rounded-2xl shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="battery_5_bar" data-weight="fill" style="font-variation-settings: 'FILL' 1;">battery_5_bar</span>
+</div>
+<span class="text-[10px] font-bold text-on-secondary-container bg-secondary-container px-2 py-1 rounded-full">ESTÁVEL</span>
+</div>
+<div class="mt-8">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-widest text-[10px] mb-1">Status do Dispositivo</p>
+<h3 class="text-2xl font-bold text-on-surface">Bateria 82%</h3>
+<p class="text-sm text-on-surface-variant mt-2">Próxima recarga estimada em 4 dias.</p>
+</div>
+</div>
+<!-- Adherence Graph Card -->
+<div class="md:col-span-2 bg-surface-container-high p-6 rounded-[2rem] relative overflow-hidden">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-lg font-bold">Aderência Semanal</h3>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="trending_up">trending_up</span>
+</div>
+<div class="flex items-end justify-between gap-2 h-32 px-2">
+<div class="w-full bg-primary/20 rounded-t-lg h-[60%]"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[80%]"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[40%]"></div>
+<div class="w-full bg-primary/20 rounded-t-lg h-[95%]"></div>
+<div class="w-full bg-primary rounded-t-lg h-[100%] shadow-[0_0_20px_rgba(0,88,188,0.3)]"></div>
+<div class="w-full bg-surface-variant rounded-t-lg h-[10%]"></div>
+<div class="w-full bg-surface-variant rounded-t-lg h-[10%]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant px-2 uppercase tracking-tighter">
+<span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span>
+</div>
+</div>
+</section>
+<!-- Quick Access Section -->
+<section class="space-y-6">
+<h2 class="text-xs font-black text-on-surface-variant uppercase tracking-[0.2em] px-2">Acesso Rápido</h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant" data-icon="pill">pill</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Minha Farmácia</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-primary-fixed-variant" data-icon="history">history</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Histórico</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-secondary-fixed-variant" data-icon="group">group</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Cuidadores</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-error-container flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-error-container" data-icon="emergency_home">emergency_home</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Emergência</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Buttons -->
+<div class="fixed bottom-28 right-6 flex flex-col gap-4 z-50">
+<button class="w-14 h-14 bg-white/80 backdrop-blur-lg rounded-full flex items-center justify-center shadow-xl text-primary border border-white/50 hover:scale-110 transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-16 h-16 bg-gradient-to-br from-[#0058BC] to-[#0070EB] rounded-full flex items-center justify-center shadow-[0_8px_25px_rgba(0,88,188,0.4)] text-white hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/70 dark:bg-[#191C1D]/70 backdrop-blur-xl rounded-t-[1.5rem] shadow-[0_-12px_40px_0_rgba(25,28,29,0.04)]">
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#0058BC] to-[#0070EB] text-white rounded-2xl px-5 py-2 shadow-lg scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home" data-weight="fill" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[11px] font-semibold mt-1">Início</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#414755] dark:text-[#E6E8E9] px-5 py-2 hover:bg-[#E6E8E9] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+<span class="text-[11px] font-semibold mt-1">Medicamentos</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#414755] dark:text-[#E6E8E9] px-5 py-2 hover:bg-[#E6E8E9] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-[11px] font-semibold mt-1">Histórico</span>
+</a>
+</nav>
+</body></html>

@@ -30,12 +30,13 @@ requireEnv('JWT_SECRET');
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const corsOrigin = process.env.CORS_ORIGIN;
 
 app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
-app.use(cors());
+app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((origin) => origin.trim()) } : undefined));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
@@ -76,17 +77,17 @@ app.use(userRoutes);
 const startServer = async () => {
   try {
     const dbClient = await pool.connect();
-    console.log('DB connection OK');
+    console.log('[db] connection OK');
     dbClient.release();
 
     await startMqttIntegration();
     setSchedulerTicker(startScheduler());
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Backend listening on port ${PORT}`);
+      console.log(`[http] backend listening on 0.0.0.0:${PORT}`);
     });
   } catch (error) {
-    console.error('Fatal: failed to connect to DB.');
+    console.error('[db] fatal: failed to connect to database during startup.');
     console.error(error);
     process.exit(1);
   }
