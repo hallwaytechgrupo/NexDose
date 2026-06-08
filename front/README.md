@@ -11,7 +11,7 @@ Atualmente esta configurado para Expo SDK 54.
 
 ## Variaveis de ambiente (dev/build)
 
-- `EXPO_PUBLIC_API_BASE_URL`: URL do backend (ex: `http://192.168.x.x:3000`).
+- `EXPO_PUBLIC_API_BASE_URL`: URL do backend (ex: `https://nexdose-backend.onrender.com`).
 - `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`: chave do Google Maps SDK (Android). Sem ela o mapa pode ficar em branco/cinza no app.
 
 ## Requisitos

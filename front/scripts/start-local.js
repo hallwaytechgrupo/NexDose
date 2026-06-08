@@ -17,13 +17,17 @@ function getLocalIPv4() {
   return null;
 }
 
-const ip = getLocalIPv4() || '127.0.0.1';
-console.log(`Using packager host: ${ip}`);
-console.log(`Using API base URL: http://${ip}:3000`);
+const ip = getLocalIPv4();
+const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nexdose-backend.onrender.com';
+
+if (ip) {
+  console.log(`Using packager host: ${ip}`);
+}
+console.log(`Using API base URL: ${apiBaseUrl}`);
 
 const env = Object.assign({}, process.env, {
-  EXPO_PACKAGER_HOSTNAME: ip,
-  EXPO_PUBLIC_API_BASE_URL: `http://${ip}:3000`,
+  ...(ip ? { EXPO_PACKAGER_HOSTNAME: ip } : {}),
+  EXPO_PUBLIC_API_BASE_URL: apiBaseUrl,
 });
 
 const proc = spawn('npx', ['expo', 'start', '--lan'], {

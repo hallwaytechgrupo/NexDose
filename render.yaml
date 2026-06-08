@@ -12,9 +12,7 @@ services:
       - key: PORT
         value: "3000"
       - key: DATABASE_URL
-        fromDatabase:
-          name: nexdose-postgres
-          property: connectionString
+        sync: false
       - key: DATABASE_SSL
         value: "true"
       - key: JWT_SECRET
@@ -35,8 +33,3 @@ services:
         value: "3"
       - key: DISPENSER_TOTAL_DIVISIONS
         value: "6"
-
-databases:
-  - name: nexdose-postgres
-    databaseName: dbnexdose
-    user: nexdose
