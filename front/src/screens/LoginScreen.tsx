@@ -12,13 +12,14 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons"; // 📦 Importação do Ícone
 import { AppScreen, GradientButton, InputField } from "../components/Primitives";
 import { colors } from "../theme/tokens";
 
 export function LoginScreen({
-  onLogin,
-  onNavigateToSignUp,
-}: {
+                              onLogin,
+                              onNavigateToSignUp,
+                            }: {
   onLogin: (email: string, password: string) => Promise<void>;
   onNavigateToSignUp: () => void;
 }) {
@@ -27,6 +28,9 @@ export function LoginScreen({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ Estado que controla a visibilidade da senha
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -41,9 +45,9 @@ export function LoginScreen({
       await onLogin(email.trim(), password);
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Nao foi possivel entrar."
+          submitError instanceof Error
+              ? submitError.message
+              : "Nao foi possivel entrar."
       );
     } finally {
       setIsSubmitting(false);
@@ -51,62 +55,79 @@ export function LoginScreen({
   };
 
   return (
-    <AppScreen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardContainer}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
-            <Image
-              source={require("../assets/img/nexdose1.png")}
-              style={styles.logo}
-            />
+      <AppScreen>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.keyboardContainer}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.container}>
+              <Image
+                  source={require("../assets/img/nexdose1.png")}
+                  style={styles.logo}
+              />
 
-            <View style={styles.form}>
-              <InputField
-                label="E-mail"
-                placeholder="seuemail@exemplo.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => passwordInputRef.current?.focus()}
-                value={email}
-                onChangeText={setEmail}
+              <View style={styles.form}>
+                <InputField
+                    label="E-mail"
+                    placeholder="seuemail@exemplo.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    value={email}
+                    onChangeText={setEmail}
+                />
+
+                {/* ✅ Container exclusivo para agrupar o Input de Senha e o Ícone */}
+                <View style={styles.passwordContainer}>
+                  <InputField
+                      ref={passwordInputRef}
+                      label="Senha"
+                      placeholder="Sua senha"
+                      secureTextEntry={!showPassword} // Alterna entre true e false
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="go"
+                      onSubmitEditing={handleSubmit}
+                      value={password}
+                      onChangeText={setPassword}
+                  />
+
+                  {/* Ícone posicionado por cima do Input */}
+                  <Pressable
+                      style={styles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={{ top: 15, bottom: 25, left: 15, right: 15 }} // Aumenta a área de clique
+                  >
+                    <Ionicons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={22}
+                        color={colors.textMuted || "#666"}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              <GradientButton
+                  title={isSubmitting ? "Entrando..." : "Entrar"}
+                  onPress={handleSubmit}
               />
-              <InputField
-                ref={passwordInputRef}
-                label="Senha"
-                placeholder="Sua senha"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="go"
-                onSubmitEditing={handleSubmit}
-                value={password}
-                onChangeText={setPassword}
-              />
+              {isSubmitting ? <ActivityIndicator color={colors.primary} /> : null}
+
+              <Pressable onPress={onNavigateToSignUp}>
+                <Text style={styles.link}>
+                  Nao tem uma conta? <Text style={styles.linkHighlight}>Cadastre-se</Text>
+                </Text>
+              </Pressable>
             </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <GradientButton
-              title={isSubmitting ? "Entrando..." : "Entrar"}
-              onPress={handleSubmit}
-            />
-            {isSubmitting ? <ActivityIndicator color={colors.primary} /> : null}
-
-            <Pressable onPress={onNavigateToSignUp}>
-              <Text style={styles.link}>
-                Nao tem uma conta? <Text style={styles.linkHighlight}>Cadastre-se</Text>
-              </Text>
-            </Pressable>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </AppScreen>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </AppScreen>
   );
 }
 
@@ -130,6 +151,18 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 6,
+  },
+  // ✅ Novos estilos para o container da senha e o ícone
+  passwordContainer: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 15,
+    bottom: 35,
+    zIndex: 1,
+    elevation: 1,
   },
   link: {
     color: colors.textMuted,

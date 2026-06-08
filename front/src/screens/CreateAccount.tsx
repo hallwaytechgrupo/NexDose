@@ -1,18 +1,18 @@
 import React, { useRef, useState } from "react";
-import { 
-  Keyboard, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  TouchableWithoutFeedback, 
-  View 
-} from "react-native";
 import {
-  Chip,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons"; // 📦 Importação do Ícone
+import {
   GradientButton,
   InputField,
   SurfaceCard,
@@ -20,9 +20,9 @@ import {
 import { colors } from "../theme/tokens";
 
 export function CreateAccountScreen({
-  onRegister,
-  onNavigateToLogin,
-}: {
+                                      onRegister,
+                                      onNavigateToLogin,
+                                    }: {
   onRegister: (payload: {
     name: string;
     email: string;
@@ -41,13 +41,23 @@ export function CreateAccountScreen({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ Estados para controlar a visibilidade das duas senhas
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
+    if (
+        !name.trim() ||
+        !email.trim() ||
+        !phone.trim() ||
+        !password ||
+        !confirmPassword
+    ) {
       setError("Preencha todos os campos.");
       return;
     }
@@ -58,26 +68,32 @@ export function CreateAccountScreen({
     setIsSubmitting(true);
     setError(null);
     try {
-      await onRegister({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role});
+      await onRegister({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        role,
+      });
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Nao foi possivel criar a conta.");
+      setError(
+          submitError instanceof Error
+              ? submitError.message
+              : "Nao foi possivel criar a conta."
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-
   return (
-      // 1. O KeyboardAvoidingView deve ser o container externo (ou logo abaixo do SafeArea)
       <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, backgroundColor: '#F8FAFB' }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, backgroundColor: "#F8FAFB" }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          {/* 2. O ScrollView vai DENTRO para permitir que o conteúdo role quando o teclado subir */}
           <ScrollView
-              contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]} // flexGrow garante que o fundo cubra tudo
+              contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
           >
@@ -90,7 +106,6 @@ export function CreateAccountScreen({
             </View>
 
             <SurfaceCard muted>
-
               <View style={styles.contentBlock}>
                 <InputField
                     label="Nome completo"
@@ -109,10 +124,9 @@ export function CreateAccountScreen({
                     autoCapitalize="none"
                     autoCorrect={false}
                     value={email}
-                    // Garante que o e-mail seja sempre salvo em minúsculo
                     onChangeText={(text) => setEmail(text.toLowerCase())}
                     returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    onSubmitEditing={() => phoneRef.current?.focus()} // ⚠️ Corrigido para ir pro telefone
                     blurOnSubmit={false}
                 />
                 <InputField
@@ -123,35 +137,73 @@ export function CreateAccountScreen({
                     value={phone}
                     onChangeText={setPhone}
                     returnKeyType={"next"}
-                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-                    blurOnSubmit={false}
-                />
-                <InputField
-                    ref={passwordRef}
-                    label="Senha"
-                    placeholder="Sua senha"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                    returnKeyType="next"
-                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                    onSubmitEditing={() => passwordRef.current?.focus()} // ⚠️ Corrigido para ir pra senha
                     blurOnSubmit={false}
                 />
 
-                <InputField
-                    ref={confirmPasswordRef}
-                    label="Confirmar senha"
-                    placeholder="Confirme sua senha"
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSubmit} // Teclar OK no teclado já cria a conta
-                />
+                {/* ✅ Container do Input de Senha Principal */}
+                <View style={styles.passwordContainer}>
 
+                  {/* ⚠️ Envelopamos o InputField nesta View com o estilo flex */}
+                  <View style={styles.inputSenhaFlex}>
+                    <InputField
+                        ref={passwordRef}
+                        label="Senha"
+                        placeholder="Sua senha"
+                        secureTextEntry={!showPassword}
+                        value={password}
+                        onChangeText={setPassword}
+                        returnKeyType="next"
+                        onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                        blurOnSubmit={false}
+                        // A propriedade style foi removida daqui!
+                    />
+                  </View>
 
+                  <Pressable
+                      style={styles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  >
+                    <Ionicons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={22}
+                        color={colors.textMuted || "#666"}
+                    />
+                  </Pressable>
                 </View>
 
+                {/* ✅ Container do Input de Confirmar Senha */}
+                <View style={styles.passwordContainer}>
+
+                  {/* ⚠️ Envelopamos o InputField nesta View com o estilo flex */}
+                  <View style={styles.inputSenhaFlex}>
+                    <InputField
+                        ref={confirmPasswordRef}
+                        label="Confirmar senha"
+                        placeholder="Confirme sua senha"
+                        secureTextEntry={!showConfirmPassword}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        returnKeyType="done"
+                        onSubmitEditing={handleSubmit}
+                        // A propriedade style foi removida daqui!
+                    />
+                  </View>
+
+                  <Pressable
+                      style={styles.eyeIcon}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  >
+                    <Ionicons
+                        name={showConfirmPassword ? "eye-off" : "eye"}
+                        size={22}
+                        color={colors.textMuted || "#666"}
+                    />
+                  </Pressable>
+                </View>
+              </View>
             </SurfaceCard>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -193,7 +245,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     textAlign: "center",
-    marginTop: 12
+    marginTop: 12,
   },
   pageSubtitle: {
     fontSize: 16,
@@ -202,6 +254,25 @@ const styles = StyleSheet.create({
   },
   contentBlock: {
     gap: 10,
+  },
+  // ✅ Estilos para os campos de senha (iguais aos do Login)
+  passwordContainer: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  inputSenhaFlex: {
+    flex: 1,
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 15,
+    height: "100%",
+    justifyContent: "center",
+    zIndex: 1,
+    elevation: 1,
+    paddingTop: Platform.OS === "ios" ? 20 : 18,
   },
   roleSection: {
     gap: 10,
