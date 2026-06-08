@@ -49,5 +49,10 @@ export async function registerForPushNotificationsAsync() {
         return;
     }
 
-    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    try {
+        return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    } catch (error) {
+        console.warn('Push notifications ainda não estão configuradas para este build:', error);
+        return;
+    }
 }

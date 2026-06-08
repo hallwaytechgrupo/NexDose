@@ -83,6 +83,10 @@ export function AppShell({
 
       } catch (error) {
         console.error("Erro ao inicializar dispositivos:", error);
+        if (error instanceof Error && error.message.includes("Token invalido")) {
+          onLogout();
+          return;
+        }
         setActiveScreen("dispenser");
       }
     }
@@ -99,7 +103,7 @@ export function AppShell({
           await savePushToken(token, pushToken);
         }
       } catch (error) {
-        console.error("Erro ao registrar notificações:", error);
+        console.warn("Registro de notificações indisponível:", error);
       }
     }
 
