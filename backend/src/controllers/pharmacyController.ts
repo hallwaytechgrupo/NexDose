@@ -104,7 +104,7 @@ export const getNearbyPharmacies = async (
     return res.status(400).json({ error: 'Latitude e Longitude são obrigatórios.' });
   }
 
-  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY_PLACES;
   if (!GOOGLE_API_KEY) {
     return res.status(500).json({ error: 'Chave da API não configurada no servidor.' });
   }
