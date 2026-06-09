@@ -27,18 +27,31 @@ export function HistoryScreen({ token, dispenserId }: HistoryScreenProps) {
   });
 
   const renderHistoryItem = ({ item }: { item: HistoryItem }) => {
-    // 1. Pega a data bruta do banco (ex: "2026-06-09 14:30:00")
-    const rawDate = String(item.scheduled_at);
 
-    // 2. Troca o espaço por 'T' para forçar o padrão ISO que o celular entende
+    // Garantir que a data seja válida
+    const rawDate = String(item.scheduledAt || '');
+    
+    if (!rawDate) {
+      return (
+        <View style={[styles.historyCard]}>
+          <Text style={styles.historySubtitle}>Data inválida</Text>
+        </View>
+      );
+    }
+
+    // Corrigir espaço ao invés de 'T' se necessário
     const safeDateString = rawDate.replace(' ', 'T');
 
-    // 3.cria a data e formata
-    const time = new Date(safeDateString).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
+    // Tentar fazer parse seguro da data
+    let time = 'Horário indisponível';
+    try {
+      time = new Date(safeDateString).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      console.warn('Erro ao fazer parse de data:', safeDateString, e);
+    }
     // Configurações padrão para 'pending'
     let iconName: keyof typeof Feather.glyphMap = "clock";
     let iconColor = colors.textMuted;

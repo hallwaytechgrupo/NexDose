@@ -114,12 +114,7 @@ export const getHistory = async (req: Request, res: Response) => {
         commandId: row.command_id,
         attempts: row.attempts,
         lastError: row.last_error,
-
-        // ✅ A SOLUÇÃO INJETADA AQUI:
-        // Enviamos os mesmos dados nos nomes das variáveis que o Front-end antigo está esperando,
-        // já forçando o padrão ISO com o 'T' para evitar o Invalid Date.
         medication_name: row.medication_name,
-        scheduled_at: new Date(row.scheduled_time).toISOString(),
       };
     });
 

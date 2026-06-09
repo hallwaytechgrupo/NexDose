@@ -53,7 +53,7 @@ export type HistoryStatus = 'taken_on_time' | 'taken_late' | 'missed' | 'pending
 export interface HistoryItem {
   id: number;
   medication_name: string;
-  scheduled_at: string;
+  scheduledAt: string;
   taken_at: string | null;
   status: HistoryStatus;
 }
