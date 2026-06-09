@@ -36,6 +36,8 @@ export async function runSchedulerOnce() {
 
       for (const dose of dueDoses) {
         try {
+          console.log(`⏰ Processando dose ${dose.id} do medicamento ${dose.medication_id}`);
+          
           await publishReleaseCommand({
             dispenserId: dose.dispenser_id,
             medicationId: dose.medication_id,
@@ -54,6 +56,8 @@ export async function runSchedulerOnce() {
             [dose.dispenser_id]
           );
 
+          console.log(`👥 Encontrados ${notifyResult.rows.length} usuários com tokens para o dispositivo ${dose.dispenser_id}`);
+
           // Buscar nome da medicação para a notificação
           const medResult = await client.query(
             `SELECT name FROM medications WHERE id = $1`,
@@ -63,15 +67,18 @@ export async function runSchedulerOnce() {
 
           // Enviar push notification para cada usuário
           for (const user of notifyResult.rows) {
+            console.log(`📱 Enviando notificação para usuário ${user.id} (${user.name}) com token: ${user.push_token.substring(0, 30)}...`);
+            
             await sendPushNotification(
               user.push_token,
               '💊 Hora do Medicamento',
               `${user.name}, é hora de tomar ${medicationName}!`
             ).catch(err => {
-              console.warn(`Erro ao enviar notificação para ${user.id}:`, err);
+              console.warn(`⚠️ Erro ao enviar notificação para ${user.id}:`, err);
             });
           }
         } catch (error) {
+          console.error(`❌ Erro ao processar dose ${dose.id}:`, error);
           await markDoseDispatchFailed({
             historyId: dose.id,
             errorMessage: error instanceof Error ? error.message : 'Falha ao publicar comando MQTT',

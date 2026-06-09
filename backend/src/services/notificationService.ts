@@ -3,7 +3,12 @@ import { Expo } from 'expo-server-sdk';
 const expo = new Expo();
 
 export const sendPushNotification = async (pushToken: string, title: string, body: string) => {
-    if (!Expo.isExpoPushToken(pushToken)) return;
+    console.log(`📤 Tentando enviar notificação para token: ${pushToken.substring(0, 30)}...`);
+    
+    if (!Expo.isExpoPushToken(pushToken)) {
+        console.warn(`⚠️ Token inválido: ${pushToken}`);
+        return;
+    }
 
     const messages = [{
         to: pushToken,
@@ -13,8 +18,9 @@ export const sendPushNotification = async (pushToken: string, title: string, bod
     }];
 
     try {
-        await expo.sendPushNotificationsAsync(messages);
+        const result = await expo.sendPushNotificationsAsync(messages);
+        console.log(`✅ Notificação enviada com sucesso:`, result);
     } catch (error) {
-        console.error("Erro ao enviar:", error);
+        console.error("❌ Erro ao enviar notificação:", error);
     }
 };
