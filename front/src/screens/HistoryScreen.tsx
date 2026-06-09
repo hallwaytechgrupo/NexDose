@@ -27,7 +27,14 @@ export function HistoryScreen({ token, dispenserId }: HistoryScreenProps) {
   });
 
   const renderHistoryItem = ({ item }: { item: HistoryItem }) => {
-    const time = new Date(item.scheduled_at).toLocaleTimeString('pt-BR', {
+    // 1. Pega a data bruta do banco (ex: "2026-06-09 14:30:00")
+    const rawDate = String(item.scheduled_at);
+
+    // 2. Troca o espaço por 'T' para forçar o padrão ISO que o celular entende
+    const safeDateString = rawDate.replace(' ', 'T');
+
+    // 3.cria a data e formata
+    const time = new Date(safeDateString).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });

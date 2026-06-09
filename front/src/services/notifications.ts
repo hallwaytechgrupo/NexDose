@@ -14,6 +14,25 @@ Notifications.setNotificationHandler({
     }),
 });
 
+// Listener para quando a notificação é recebida
+export function setupNotificationListeners() {
+    // Quando a notificação é recebida enquanto o app está aberto
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+        console.log('📱 Notificação recebida:', notification);
+    });
+
+    // Quando o usuário toca na notificação
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log('👆 Notificação tocada:', response);
+        // Aqui você pode adicionar lógica para navegar para a tela correta
+    });
+
+    return () => {
+        notificationListener.remove();
+        responseListener.remove();
+    };
+}
+
 export async function registerForPushNotificationsAsync() {
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {

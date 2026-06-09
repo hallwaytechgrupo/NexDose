@@ -25,7 +25,7 @@ import { TabKey } from "./data/mockData";
 import { GradientButton, ButtonRow } from "./components/Primitives";
 import { colors, radius, shadow } from "./theme/tokens";
 import { AuthUser, UpdateProfileResponse, getApiBaseUrl, getDispensers, savePushToken } from "./services/api";
-import { registerForPushNotificationsAsync } from './services/notifications';
+import { registerForPushNotificationsAsync, setupNotificationListeners } from './services/notifications';
 import { HelpScreen} from "./screens/HelpScreen";
 
 type AppScreen = TabKey | "userMenu" | "editProfile" | "loading" | "caregiver" | "pharmacy" | "dispenser" | "help";
@@ -108,6 +108,10 @@ export function AppShell({
     }
 
     registerDeviceForNotifications();
+    
+    // Setup listeners para notificações recebidas e ações
+    const unsubscribe = setupNotificationListeners();
+    return unsubscribe;
   }, [token]);
 
   // Controle do Botão Voltar (Android)
