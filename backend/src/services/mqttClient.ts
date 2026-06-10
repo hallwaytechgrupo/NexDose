@@ -48,13 +48,46 @@ function parseNumber(value: unknown): number | null {
   return Number.isFinite(numeric) ? Math.floor(numeric) : null;
 }
 
+function extractDeviceIdFromTopic(topic: string) {
+  const parts = topic.split('/');
+  const dispenserIndex = parts.findIndex((part) => part === 'dispenser');
+  const deviceId = dispenserIndex >= 0 ? parts[dispenserIndex + 1] : null;
+  return deviceId && deviceId.trim() ? deviceId.trim() : null;
+}
+
+async function resolveDispenserId(deviceId: unknown): Promise<number | null> {
+  const numericId = parseNumber(deviceId);
+  if (numericId) {
+    return numericId;
+  }
+
+  if (typeof deviceId !== 'string' || !deviceId.trim()) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `SELECT id FROM dispensers WHERE LOWER(serial_number) = LOWER($1) LIMIT 1`,
+    [deviceId.trim()]
+  );
+
+  return result.rows[0]?.id ? Number(result.rows[0].id) : null;
+}
+
+async function resolveDeviceTopicId(dispenserId: number): Promise<string> {
+  const result = await pool.query(
+    `SELECT serial_number FROM dispensers WHERE id = $1 LIMIT 1`,
+    [dispenserId]
+  );
+
+  return result.rows[0]?.serial_number || String(dispenserId);
+}
+
 function safeParsePayload(raw: Buffer): MqttEventPayload | null {
   try {
     const parsed = JSON.parse(raw.toString('utf8')) as MqttEventPayload;
     if (!parsed || typeof parsed !== 'object') return null;
     if (typeof parsed.eventType !== 'string' || !parsed.eventType.trim()) return null;
     if (typeof parsed.timestamp !== 'string' || !parsed.timestamp.trim()) return null;
-    if (parsed.deviceId === undefined || parsed.deviceId === null || parsed.deviceId === '') return null;
     return parsed;
   } catch {
     return null;
@@ -62,7 +95,9 @@ function safeParsePayload(raw: Buffer): MqttEventPayload | null {
 }
 
 async function handleMqttEvent(topic: string, payload: MqttEventPayload) {
-  const dispenserId = parseNumber(payload.deviceId);
+  const topicDeviceId = extractDeviceIdFromTopic(topic);
+  const deviceId = payload.deviceId ?? topicDeviceId;
+  const dispenserId = await resolveDispenserId(deviceId);
   const medicationId = parseNumber(payload.medicationId);
 
   await recordDeviceEvent({
@@ -74,15 +109,17 @@ async function handleMqttEvent(topic: string, payload: MqttEventPayload) {
   });
 
   if (payload.eventType === 'dose_taken' || payload.eventType === 'dose_ack') {
-    await markDoseTaken({
-      commandId: payload.commandId ?? null,
-      dispenserId: dispenserId ?? 0,
-      medicationId,
-      intakeTime: payload.timestamp ? new Date(payload.timestamp) : new Date(),
-    });
+    if (dispenserId) {
+      await markDoseTaken({
+        commandId: payload.commandId ?? null,
+        dispenserId,
+        medicationId,
+        intakeTime: payload.timestamp ? new Date(payload.timestamp) : new Date(),
+      });
+    }
   }
 
-  if (payload.eventType === 'device_status') {
+  if (payload.eventType === 'device_status' && dispenserId) {
     await pool.query(
       `UPDATE dispensers
        SET status = COALESCE($2, status),
@@ -131,10 +168,12 @@ export async function publishReleaseCommand(params: {
 
   const prefix = process.env.MQTT_TOPIC_PREFIX || 'nexdose';
   const commandId = randomUUID();
-  const topic = buildReleaseTopic(prefix, params.dispenserId);
+  const deviceTopicId = await resolveDeviceTopicId(params.dispenserId);
+  const topic = buildReleaseTopic(prefix, deviceTopicId);
   const payload = buildReleasePayload({
     commandId,
     dispenserId: params.dispenserId,
+    deviceId: deviceTopicId,
     medicationId: params.medicationId,
     scheduledTime: params.scheduledTime,
     attempts: params.attempts,

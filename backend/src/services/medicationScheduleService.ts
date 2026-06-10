@@ -266,8 +266,8 @@ export async function recordDeviceEvent(params: {
   );
 }
 
-export function buildReleaseTopic(prefix: string, dispenserId: number) {
-  return `${prefix}/dispenser/${dispenserId}/command`;
+export function buildReleaseTopic(prefix: string, deviceId: string | number) {
+  return `${prefix}/dispenser/${deviceId}/command`;
 }
 
 export function buildStatusTopic(prefix: string) {
@@ -281,6 +281,7 @@ export function buildEventTopic(prefix: string) {
 export function buildReleasePayload(params: {
   commandId: string;
   dispenserId: number;
+  deviceId?: string | number;
   medicationId: number;
   scheduledTime: Date;
   attempts: number;
@@ -293,7 +294,7 @@ export function buildReleasePayload(params: {
     eventType: 'release_dose',
     timestamp: new Date().toISOString(),
     commandId: params.commandId,
-    deviceId: String(params.dispenserId),
+    deviceId: String(params.deviceId ?? params.dispenserId),
     data: {
       dispenserId: params.dispenserId,
       medicationId: params.medicationId,
