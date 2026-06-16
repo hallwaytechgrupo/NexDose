@@ -28,7 +28,7 @@ async function checkMissedDoses() {
       await markDoseMissed(dose.id, `Dose não coletada em ${missedDoseTimeoutMinutes} minutos.`);
       
       // Lógica de notificação para o cuidador/responsável
-      const tokens = await getPushTokensForDispenser(dose.dispenser_id);
+      const tokens = await getPushTokensForDispenser(dose.dispenser_id, 'delay');
       if (tokens.length > 0) {
         const title = '⚠️ Alerta: Dose Não Coletada';
         const body = `A dose do medicamento ID ${dose.medication_id} foi dispensada mas não foi coletada a tempo.`;
@@ -84,7 +84,7 @@ async function runSchedulerOnce() {
             attempts: dose.attempts,
           });
 
-          const tokens = await getPushTokensForDispenser(dose.dispenser_id);
+          const tokens = await getPushTokensForDispenser(dose.dispenser_id, 'release');
           if (tokens.length > 0) {
             const medResult = await client.query(
               `SELECT name FROM medications WHERE id = $1`,

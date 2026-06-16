@@ -184,7 +184,7 @@ export function SettingsScreen({ token, dispenserId }: SettingsScreenProps) {
                     icon={item.icon as any}
                     title={item.title}
                     subtitle={item.subtitle}
-                    value={!!toggleStates[item.key]}
+                    value={toggleStates[item.key] !== undefined ? toggleStates[item.key] : item.enabled}
                     onValueChange={(value) => handleToggleChange(item.key, value)}
                   />
                 ))}

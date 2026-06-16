@@ -1,3 +1,14 @@
+jest.mock('expo-server-sdk', () => {
+  return {
+    Expo: jest.fn().mockImplementation(() => {
+      return {
+        chunkPushNotifications: jest.fn().mockReturnValue([]),
+        sendPushNotificationsAsync: jest.fn().mockResolvedValue([]),
+        isExpoPushToken: jest.fn().mockReturnValue(true),
+      };
+    }),
+  };
+});
 import request from 'supertest';
 import { app } from '../server';
 

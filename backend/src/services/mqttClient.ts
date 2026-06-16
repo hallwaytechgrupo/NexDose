@@ -81,16 +81,67 @@ async function handleMqttEvent(topic: string, payload: MqttEventPayload) {
       medicationId,
       intakeTime: payload.timestamp ? new Date(payload.timestamp) : new Date(),
     });
+
+    if (dispenserId) {
+      try {
+        let medicationName = 'Medicamento';
+        if (medicationId) {
+          const name = await getMedicationNameById(medicationId);
+          if (name) medicationName = name;
+        }
+
+        const tokens = await getPushTokensForDispenser(dispenserId, 'intake');
+        if (tokens.length > 0) {
+          const title = '✅ Dose Ingerida';
+          const body = `A dose do medicamento ${medicationName} foi retirada com sucesso!`;
+          await sendPushNotifications(tokens, title, body, {
+            dispenserId: String(dispenserId),
+            medicationId: medicationId ? String(medicationId) : '',
+            eventType: payload.eventType,
+          });
+        }
+      } catch (error) {
+        console.error('[mqtt] Erro ao enviar notificação de ingestão:', error);
+      }
+    }
   }
 
   if (payload.eventType === 'device_status') {
+    const status = typeof payload.data?.status === 'string' ? payload.data.status : 'online';
     await pool.query(
         `UPDATE dispensers
        SET status = COALESCE($2, status),
            last_sync = NOW()
        WHERE id = $1`,
-        [dispenserId, typeof payload.data?.status === 'string' ? payload.data.status : 'online']
+        [dispenserId, status]
     );
+
+    if (dispenserId && (status === 'offline' || status === 'battery_low')) {
+      try {
+        const tokens = await getPushTokensForDispenser(dispenserId, 'device');
+        if (tokens.length > 0) {
+          const dispenserResult = await pool.query('SELECT name FROM dispensers WHERE id = $1', [dispenserId]);
+          const dispenserName = dispenserResult.rows[0]?.name || 'Dispenser';
+
+          let title = '⚠️ Alerta do Dispenser';
+          let body = `Ocorreu um evento no dispenser "${dispenserName}".`;
+          if (status === 'offline') {
+            title = '🔌 Dispenser Desconectado';
+            body = `O dispenser "${dispenserName}" perdeu a conexão.`;
+          } else if (status === 'battery_low') {
+            title = '🔋 Bateria Baixa';
+            body = `O dispenser "${dispenserName}" está com bateria baixa.`;
+          }
+
+          await sendPushNotifications(tokens, title, body, {
+            dispenserId: String(dispenserId),
+            status,
+          });
+        }
+      } catch (error) {
+        console.error('[mqtt] Erro ao enviar notificação de status de dispositivo:', error);
+      }
+    }
   }
 }
 
