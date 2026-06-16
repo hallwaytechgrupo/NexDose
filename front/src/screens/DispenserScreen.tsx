@@ -131,7 +131,7 @@ export function DispenserScreen({
         <View style={styles.headerCopy}>
           <Text style={styles.pageTitle}>Dispositivos</Text>
           <Text style={styles.pageSubtitle}>
-            Selecione um dispenser para filtrar medicamentos e compartilhamentos.
+            Selecione um dispositivo para filtrar medicamentos e compartilhamentos.
           </Text>
         </View>
 
