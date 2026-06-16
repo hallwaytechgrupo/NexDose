@@ -181,6 +181,19 @@ export async function markDoseDispatched(params: {
   );
 }
 
+// ✅ NOVA FUNÇÃO: Marca a dose como 'dispatched' baseado na confirmação do dispositivo
+export async function markDoseAsDispensedByDevice(commandId: string) {
+  if (!commandId) return;
+  await pool.query(
+    `UPDATE medication_intake_history
+     SET status = 'dispatched',
+         acknowledged_at = NOW(),
+         updated_at = NOW()
+     WHERE command_id = $1 AND status = 'pending'`, // Apenas atualiza se ainda estiver pendente
+    [commandId]
+  );
+}
+
 export async function markDoseDispatchFailed(params: {
   historyId: number;
   errorMessage: string;

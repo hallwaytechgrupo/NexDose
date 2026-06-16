@@ -5,18 +5,22 @@ import {
   replaceMedicationSchedule,
 } from '../services/medicationScheduleService';
 
+// ✅ Adicionado 'compartment'
 interface CreateMedicationRequest {
   name: string;
   dosage: string;
+  compartment: number;
   startDate: string;
   intervalHours: number;
   endDate?: string;
   isContinuous: boolean;
 }
 
+// ✅ Adicionado 'compartment'
 interface UpdateMedicationRequest {
   name?: string;
   dosage?: string;
+  compartment?: number;
   startDate?: string;
   intervalHours?: number;
   endDate?: string;
@@ -91,7 +95,7 @@ export const getHistory = async (req: Request, res: Response) => {
          WHERE h.dispenser_id = $1
            AND DATE(h.scheduled_time AT TIME ZONE 'America/Sao_Paulo') = DATE(NOW() AT TIME ZONE 'America/Sao_Paulo')
          ORDER BY h.scheduled_time ASC`,
-        [dispenserId] // <--- AQUI ESTÁ O PARÂMETRO $1!
+        [dispenserId]
     );
 
     const history = result.rows.map((row) => {
@@ -135,8 +139,9 @@ export const getMedications = async (req: Request, res: Response) => {
   if (!access.ok) return res.status(access.status).json({ error: access.error });
 
   try {
+    // ✅ Adicionado 'compartment' ao SELECT
     const result = await pool.query(
-        `SELECT id, name, dosage, start_time, schedule_start_at, end_date, interval_hours, is_continuous
+        `SELECT id, name, dosage, compartment, start_time, schedule_start_at, end_date, interval_hours, is_continuous
          FROM medications
          WHERE dispenser_id = $1
          ORDER BY created_at DESC`,
@@ -147,8 +152,9 @@ export const getMedications = async (req: Request, res: Response) => {
       id: String(m.id),
       name: m.name,
       dosage: m.dosage,
+      compartment: m.compartment, // ✅ Adicionado 'compartment' ao retorno
       interval: m.interval_hours,
-      nextDose: m.start_time, // Retorna "15:00:00" para o front aplicar substring(0,5) -> "15:00"
+      nextDose: m.start_time,
       scheduleStartAt: m.schedule_start_at,
       endDate: m.end_date,
       isContinuous: m.is_continuous,
@@ -167,38 +173,37 @@ export const createMedication = async (
 ) => {
   const userId = Number((req as any).userId);
   const dispenserId = toInt(req.params.dispenserId ?? (req.body as any)?.dispenserId);
-  const { name, dosage, startDate, intervalHours, endDate, isContinuous } = req.body;
+  // ✅ Adicionado 'compartment'
+  const { name, dosage, compartment, startDate, intervalHours, endDate, isContinuous } = req.body;
 
   if (!dispenserId) return res.status(400).json({ error: 'dispenserId é obrigatório.' });
 
   const access = await assertDeviceAccess({ userId, dispenserId, requireEdit: true });
   if (!access.ok) return res.status(access.status).json({ error: access.error });
 
-  if (!name || !dosage || !startDate || intervalHours === undefined) {
+  // ✅ Adicionado 'compartment' à validação
+  if (!name || !dosage || !compartment || !startDate || intervalHours === undefined) {
     return res.status(400).json({ error: 'Campos obrigatórios faltando.' });
   }
 
-  // Prevenção contra loop infinito se o usuário enviar intervalo 0
   if (intervalHours <= 0) {
     return res.status(400).json({ error: 'O intervalo de horas deve ser maior que zero.' });
   }
 
   const parsedStartDate = new Date(startDate);
-  // Força o fuso do Brasil para evitar que no servidor fique 3h adiantado
   const startTime = parsedStartDate.toLocaleTimeString('pt-BR', {
     hour12: false,
     timeZone: 'America/Sao_Paulo'
   });
 
-  // AQUI ESTÁ A VARIÁVEL QUE HAVIA SUMIDO:
   const finalEndDate = isContinuous ? null : endDate;
 
   try {
-    // 1. Cria a "Regra" do medicamento
+    // ✅ Adicionado 'compartment' ao INSERT
     const medResult = await pool.query(
-        `INSERT INTO medications (dispenser_id, name, dosage, start_time, schedule_start_at, end_date, interval_hours, is_continuous)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [dispenserId, name, dosage, startTime, parsedStartDate, finalEndDate, intervalHours, isContinuous]
+        `INSERT INTO medications (dispenser_id, name, dosage, compartment, start_time, schedule_start_at, interval_hours, is_continuous, end_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [dispenserId, name, dosage, compartment, startTime, parsedStartDate, intervalHours, isContinuous, finalEndDate]
     );
 
     const newMedication = medResult.rows[0];
@@ -225,7 +230,8 @@ export const updateMedication = async (
   const userId = Number((req as any).userId);
   const dispenserId = toInt(req.params.dispenserId ?? req.query.dispenserId);
   const medicationId = toInt(req.params.id);
-  const { name, dosage, startDate, intervalHours, endDate, isContinuous } = req.body;
+  // ✅ Adicionado 'compartment'
+  const { name, dosage, compartment, startDate, intervalHours, endDate, isContinuous } = req.body;
 
   if (!dispenserId || !medicationId) return res.status(400).json({ error: 'IDs inválidos.' });
 
@@ -239,6 +245,8 @@ export const updateMedication = async (
 
     if (name !== undefined) { fields.push(`name = $${i++}`); values.push(name); }
     if (dosage !== undefined) { fields.push(`dosage = $${i++}`); values.push(dosage); }
+    // ✅ Adicionado 'compartment' à lógica dinâmica
+    if (compartment !== undefined) { fields.push(`compartment = $${i++}`); values.push(compartment); }
     if (intervalHours !== undefined) { fields.push(`interval_hours = $${i++}`); values.push(intervalHours); }
     if (isContinuous !== undefined) { fields.push(`is_continuous = $${i++}`); values.push(isContinuous); }
 

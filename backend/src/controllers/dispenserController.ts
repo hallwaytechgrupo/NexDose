@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db';
+import { mqttClient } from '../services/mqttClient';
 
 type ClaimDispenserBody = {
   serialNumber?: string;
@@ -124,4 +125,46 @@ export const unclaimDispenser = async (req: Request<{ id: string }>, res: Respon
     console.error('Erro ao desassociar dispensador:', error);
     res.status(500).json({ error: 'Erro interno do servidor.' });
   }
+};
+
+export const releaseMedication = async (req: Request, res: Response) => {
+  const { id } = req.params; // ID do dispenser (nd001)
+  const { medicationId, medicationName, doseIndex } = req.body;
+
+  // Validação básica
+  if (!medicationId || doseIndex === undefined) {
+    return res.status(400).json({ error: "Dados incompletos para o disparo" });
+  }
+
+  // Payload formatado para o ESP32
+  const payload = JSON.stringify({
+    eventType: "release_dose",
+    commandId: `cmd-${Date.now()}`,
+    data: {
+      medicationId,
+      medicationName,
+      disco: 1,
+      doseIndex
+    }
+  });
+
+  const topic = `nexdose/dispenser/${id}/command`;
+
+  if (!mqttClient) {
+    return res.status(500).json({ error: "MQTT client not initialized." });
+  }
+
+  // Publica no HiveMQ
+  mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
+    if (err) {
+      console.error('Erro ao publicar no MQTT:', err);
+      return res.status(500).json({ error: "Falha ao enviar comando ao hardware" });
+    }
+    
+    console.log(`Comando enviado para ${topic}: ${payload}`);
+    res.status(200).json({ 
+      message: "Comando enviado com sucesso", 
+      commandId: Date.now() 
+    });
+  });
 };

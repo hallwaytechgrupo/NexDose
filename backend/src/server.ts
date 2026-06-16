@@ -13,7 +13,7 @@ import pharmacyRoutes from './routes/pharmacyRoutes';
 import userRoutes from './routes/userRoute';
 import iotRoutes from './routes/iotRoutes';
 import { startMqttIntegration, setSchedulerTicker, stopMqttIntegration } from './services/mqttClient';
-import { startScheduler } from './services/schedulerService';
+import { startScheduler } from './services/schedulerService'; // CORRIGIDO
 
 dotenv.config();
 
@@ -81,11 +81,17 @@ const startServer = async () => {
     dbClient.release();
 
     await startMqttIntegration();
-    setSchedulerTicker(startScheduler());
+    const schedulerTask = startScheduler();
+    
+    // A função setSchedulerTicker parece ser projetada para gerenciar o timer do scheduler
+    // para um desligamento gracioso.
+    setSchedulerTicker(schedulerTask);
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[http] backend listening on 0.0.0.0:${PORT}`);
-    });
+    if (process.env.NODE_ENV !== 'test') {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[http] backend listening on 0.0.0.0:${PORT}`);
+      });
+    }
   } catch (error) {
     console.error('[db] fatal: failed to connect to database during startup.');
     console.error(error);
@@ -101,4 +107,8 @@ process.on('SIGINT', () => {
   void stopMqttIntegration().finally(() => process.exit(0));
 });
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+export { app };
