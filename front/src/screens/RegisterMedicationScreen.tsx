@@ -238,7 +238,7 @@ export default function MedicationsScreen({
                       </SurfaceCard>
                   );
                 }}
-                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum medicamento no dispenser.</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum medicamento no dispositivo.</Text>}
             />
         )}
 

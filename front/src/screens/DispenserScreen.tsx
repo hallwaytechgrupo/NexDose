@@ -233,7 +233,7 @@ function AddDispenserForm({
         <View style={styles.headerCopy}>
           <Text style={styles.pageTitle}>Adicionar dispositivo</Text>
           <Text style={styles.pageSubtitle}>
-            Digite o número de série que está no dispenser.
+            Digite o número de série que está no dispositivo.
           </Text>
         </View>
 
