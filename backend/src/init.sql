@@ -144,6 +144,7 @@ CREATE INDEX IF NOT EXISTS idx_device_events_dispenser_id ON device_events (disp
 -- =========================================================================
 INSERT INTO dispensers (serial_number, name, sponsor_id, status)
 VALUES
+    ('nd001', 'Dispenser ND001', NULL, 'offline'),
     ('NEX-001-ALPHA', 'Dispenser Alfa', NULL, 'offline'),
     ('NEX-002-BETA',  'Dispenser Beta', NULL, 'offline'),
     ('NEX-003-GAMMA', 'Dispenser Gama', NULL, 'offline')
