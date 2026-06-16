@@ -82,7 +82,7 @@ export function HistoryScreen({ token, dispenserId }: HistoryScreenProps) {
 
   const renderContent = () => {
     if (!dispenserId) {
-      return <Text style={styles.emptyText}>Nenhum dispensador selecionado.</Text>;
+      return <Text style={styles.emptyText}>Nenhum dispositivo selecionado.</Text>;
     }
 
     if (isLoading) {

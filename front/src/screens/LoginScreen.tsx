@@ -47,7 +47,7 @@ export function LoginScreen({
       setError(
           submitError instanceof Error
               ? submitError.message
-              : "Nao foi possivel entrar."
+              : "Não foi possivel entrar."
       );
     } finally {
       setIsSubmitting(false);
@@ -121,7 +121,7 @@ export function LoginScreen({
 
               <Pressable onPress={onNavigateToSignUp}>
                 <Text style={styles.link}>
-                  Nao tem uma conta? <Text style={styles.linkHighlight}>Cadastre-se</Text>
+                  Não tem uma conta? <Text style={styles.linkHighlight}>Cadastre-se</Text>
                 </Text>
               </Pressable>
             </View>

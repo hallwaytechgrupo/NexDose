@@ -113,7 +113,7 @@ export function EditProfileScreen({
     if (!name.trim() || !email.trim()) {
       openResponseModal({
         title: "Campos invalidos",
-        message: "Nome e e-mail sao obrigatorios.",
+        message: "Nome e e-mail são obrigatorios.",
         variant: "error",
       });
       return;
@@ -132,7 +132,7 @@ export function EditProfileScreen({
       if (password !== confirmPassword) {
         openResponseModal({
           title: "Senha invalida",
-          message: "A confirmacao da senha nao confere.",
+          message: "A confirmacao da senha não confere.",
           variant: "error",
         });
         return;
@@ -162,7 +162,7 @@ export function EditProfileScreen({
         message:
             saveError instanceof Error
                 ? saveError.message
-                : "Nao foi possivel atualizar o perfil.",
+                : "Não foi possivel atualizar o perfil.",
         variant: "error",
       });
     } finally {
@@ -216,7 +216,7 @@ export function EditProfileScreen({
                   keyboardType="phone-pad"
               />
               <Text style={styles.helperText}>
-                O telefone ainda nao e salvo no backend atual.
+                O telefone aindanão e salvo no backend atual.
               </Text>
             </View>
           </SurfaceCard>

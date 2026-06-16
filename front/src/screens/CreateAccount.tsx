@@ -62,7 +62,7 @@ export function CreateAccountScreen({
       return;
     }
     if (password !== confirmPassword) {
-      setError("As senhas nao coincidem.");
+      setError("As senhas não coincidem.");
       return;
     }
     setIsSubmitting(true);
@@ -79,7 +79,7 @@ export function CreateAccountScreen({
       setError(
           submitError instanceof Error
               ? submitError.message
-              : "Nao foi possivel criar a conta."
+              : "Não foi possível criar a conta."
       );
     } finally {
       setIsSubmitting(false);
@@ -216,7 +216,7 @@ export function CreateAccountScreen({
             {onNavigateToLogin && (
                 <Pressable onPress={onNavigateToLogin} style={{ marginBottom: 20 }}>
                   <Text style={styles.link}>
-                    Ja tem uma conta? <Text style={styles.linkHighlight}>Faca login</Text>
+                    Já tem uma conta? <Text style={styles.linkHighlight}>Faca login</Text>
                   </Text>
                 </Pressable>
             )}

@@ -14,7 +14,12 @@ export default {
     orientation: "portrait",
     icon: "./src/assets/img/ndIcon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false, // Mantido em false para garantir compatibilidade com módulos nativos atuais
+    newArchEnabled: false,
+    splash: {
+      image: "./src/assets/img/ndIcon.png",
+      resizeMode: "contain",
+      backgroundColor: "#FFFFFF" // É exatamente essa cor que o Android estava pedindo!
+    },// Mantido em false para garantir compatibilidade com módulos nativos atuais
 
     ios: {
       supportsTablet: true,
