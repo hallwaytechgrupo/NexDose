@@ -153,6 +153,23 @@ export const releaseMedication = async (req: Request, res: Response) => {
     console.warn('Erro ao consultar compartimento do medicamento no banco:', dbErr);
   }
 
+  // Obter o serial_number do dispenser a partir do id do banco
+  let serialNumber = id;
+  const numericId = Number(id);
+  if (Number.isFinite(numericId)) {
+    try {
+      const dispResult = await pool.query(
+        'SELECT serial_number FROM dispensers WHERE id = $1',
+        [numericId]
+      );
+      if (dispResult.rows.length > 0) {
+        serialNumber = dispResult.rows[0].serial_number;
+      }
+    } catch (dbErr) {
+      console.warn('Erro ao consultar serial_number do dispenser:', dbErr);
+    }
+  }
+
   // Payload formatado para o ESP32
   const payload = JSON.stringify({
     eventType: "release_dose",
@@ -165,7 +182,7 @@ export const releaseMedication = async (req: Request, res: Response) => {
     }
   });
 
-  const topic = `nexdose/dispenser/${id}/command`;
+  const topic = `nexdose/dispenser/${serialNumber}/command`;
 
   if (!mqttClient) {
     return res.status(500).json({ error: "MQTT client not initialized." });

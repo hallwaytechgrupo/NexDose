@@ -63,8 +63,43 @@ function safeParsePayload(raw: Buffer): MqttEventPayload | null {
 }
 
 async function handleMqttEvent(topic: string, payload: MqttEventPayload) {
-  const dispenserId = parseNumber(payload.deviceId);
+  let dispenserId = parseNumber(payload.deviceId);
   const medicationId = parseNumber(payload.medicationId);
+
+  // Se o deviceId não for um número finito (ex: "nd001"), tenta obter o ID do banco correspondente ao serial number
+  if (!dispenserId && payload.deviceId) {
+    try {
+      const serialStr = String(payload.deviceId).trim();
+      const dispResult = await pool.query(
+        'SELECT id FROM dispensers WHERE serial_number = $1',
+        [serialStr]
+      );
+      if (dispResult.rows.length > 0) {
+        dispenserId = dispResult.rows[0].id;
+      }
+    } catch (dbErr) {
+      console.error('[mqtt] Erro ao buscar dispenser pelo serial number no payload:', dbErr);
+    }
+  }
+
+  // Fallback: se ainda for nulo, tenta obter o serial number a partir do tópico (nexdose/dispenser/+/event)
+  if (!dispenserId) {
+    try {
+      const parts = topic.split('/');
+      const serialFromTopic = parts[2];
+      if (serialFromTopic) {
+        const dispResult = await pool.query(
+          'SELECT id FROM dispensers WHERE serial_number = $1',
+          [serialFromTopic.trim()]
+        );
+        if (dispResult.rows.length > 0) {
+          dispenserId = dispResult.rows[0].id;
+        }
+      }
+    } catch (dbErr) {
+      console.error('[mqtt] Erro ao buscar dispenser pelo serial number no tópico:', dbErr);
+    }
+  }
 
   await recordDeviceEvent({
     topic,
@@ -199,12 +234,20 @@ export async function publishReleaseCommand(params: {
   const seqNum = Number(seqResult.rows[0].count);
   const doseIndex = (seqNum % totalDivisions) + 1;
 
+  // 3. Obter o serial_number do dispenser para o tópico e payload do MQTT
+  const dispenserResult = await pool.query(
+    'SELECT serial_number FROM dispensers WHERE id = $1',
+    [params.dispenserId]
+  );
+  const serialNumber = dispenserResult.rows.length > 0 ? dispenserResult.rows[0].serial_number : String(params.dispenserId);
+
   const prefix = process.env.MQTT_TOPIC_PREFIX || 'nexdose';
   const commandId = randomUUID();
-  const topic = buildReleaseTopic(prefix, params.dispenserId);
+  const topic = buildReleaseTopic(prefix, serialNumber);
   const payload = buildReleasePayload({
     commandId,
     dispenserId: params.dispenserId,
+    deviceId: serialNumber,
     medicationId: params.medicationId,
     scheduledTime: params.scheduledTime,
     attempts: params.attempts,
