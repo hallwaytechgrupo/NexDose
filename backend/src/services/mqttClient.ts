@@ -130,6 +130,24 @@ export async function publishReleaseCommand(params: {
     throw new Error('Cliente MQTT ainda não conectado.');
   }
 
+  // 1. Obter o compartimento (disco) correto do medicamento cadastrado
+  const medResult = await pool.query(
+    'SELECT compartment FROM medications WHERE id = $1',
+    [params.medicationId]
+  );
+  const compartment = medResult.rows.length > 0 && medResult.rows[0].compartment !== null 
+    ? Number(medResult.rows[0].compartment) 
+    : 1;
+
+  // 2. Calcular o doseIndex cronológico (1 a 6) para a divisória correta do disco
+  const seqResult = await pool.query(
+    'SELECT COUNT(*) as count FROM medication_intake_history WHERE medication_id = $1 AND scheduled_time < $2',
+    [params.medicationId, params.scheduledTime]
+  );
+  const totalDivisions = Number(process.env.DISPENSER_TOTAL_DIVISIONS) || 6;
+  const seqNum = Number(seqResult.rows[0].count);
+  const doseIndex = (seqNum % totalDivisions) + 1;
+
   const prefix = process.env.MQTT_TOPIC_PREFIX || 'nexdose';
   const commandId = randomUUID();
   const topic = buildReleaseTopic(prefix, params.dispenserId);
@@ -139,6 +157,8 @@ export async function publishReleaseCommand(params: {
     medicationId: params.medicationId,
     scheduledTime: params.scheduledTime,
     attempts: params.attempts,
+    disco: compartment,
+    doseIndex: doseIndex,
   });
 
   // Retry with exponential backoff
@@ -323,3 +343,6 @@ export function isMqttConnected() {
 export function setSchedulerTicker(tick: NodeJS.Timeout | null) {
   schedulerTick = tick;
 }
+
+export { client as mqttClient };
+

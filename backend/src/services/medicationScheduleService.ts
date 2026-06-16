@@ -298,11 +298,9 @@ export function buildReleasePayload(params: {
   medicationId: number;
   scheduledTime: Date;
   attempts: number;
+  disco: number;
+  doseIndex: number;
 }) {
-  const totalServos = Number(process.env.DISPENSER_TOTAL_SERVOS) || 3;
-  const totalDivisions = Number(process.env.DISPENSER_TOTAL_DIVISIONS) || 6;
-  const zeroBasedMedication = Math.max(params.medicationId - 1, 0);
-
   return {
     eventType: 'release_dose',
     timestamp: new Date().toISOString(),
@@ -313,8 +311,8 @@ export function buildReleasePayload(params: {
       medicationId: params.medicationId,
       scheduledTime: params.scheduledTime.toISOString(),
       attempts: params.attempts,
-      disco: (zeroBasedMedication % totalServos) + 1,
-      doseIndex: (Math.floor(zeroBasedMedication / totalServos) % totalDivisions) + 1,
+      disco: params.disco,
+      doseIndex: params.doseIndex,
     },
   };
 }

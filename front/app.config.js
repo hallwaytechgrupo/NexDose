@@ -6,6 +6,7 @@ const googleServiceInfoFile = './GoogleService-Info.plist';
 
 export default {
   expo: {
+    owner: "nexdose",
     name: "NexDose",
     slug: "nexdose-mobile",
     scheme: "nexdose",

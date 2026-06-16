@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS medications (
                              dispenser_id INTEGER NOT NULL REFERENCES dispensers(id) ON DELETE CASCADE,
                              name VARCHAR(255) NOT NULL,
                              dosage VARCHAR(100),
+                             compartment INTEGER DEFAULT 1,
                              start_time VARCHAR(50) NOT NULL, -- Guarda o texto do horário (ex: "15:00:00")
                              schedule_start_at TIMESTAMP WITH TIME ZONE NOT NULL,
                              end_date TIMESTAMP WITH TIME ZONE,

@@ -136,14 +136,31 @@ export const releaseMedication = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Dados incompletos para o disparo" });
   }
 
+  // Obter o compartimento (disco) correto e nome do medicamento cadastrado
+  let compartment = 1;
+  let finalMedicationName = medicationName;
+
+  try {
+    const medResult = await pool.query(
+      'SELECT name, compartment FROM medications WHERE id = $1',
+      [medicationId]
+    );
+    if (medResult.rows.length > 0) {
+      compartment = Number(medResult.rows[0].compartment) || 1;
+      finalMedicationName = medResult.rows[0].name || medicationName;
+    }
+  } catch (dbErr) {
+    console.warn('Erro ao consultar compartimento do medicamento no banco:', dbErr);
+  }
+
   // Payload formatado para o ESP32
   const payload = JSON.stringify({
     eventType: "release_dose",
     commandId: `cmd-${Date.now()}`,
     data: {
       medicationId,
-      medicationName,
-      disco: 1,
+      medicationName: finalMedicationName,
+      disco: compartment,
       doseIndex
     }
   });
@@ -155,7 +172,7 @@ export const releaseMedication = async (req: Request, res: Response) => {
   }
 
   // Publica no HiveMQ
-  mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
+  mqttClient.publish(topic, payload, { qos: 1 }, (err?: Error) => {
     if (err) {
       console.error('Erro ao publicar no MQTT:', err);
       return res.status(500).json({ error: "Falha ao enviar comando ao hardware" });
